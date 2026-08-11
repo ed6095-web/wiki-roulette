@@ -50,6 +50,22 @@ class ArticleModel {
             .toList(),
       );
 
+  Map<String, dynamic> toJson() => {
+        'id': id,
+        'wiki_page_id': wikiPageId,
+        'title': title,
+        'slug': slug,
+        'url': url,
+        'description': description,
+        'extract': extract,
+        'thumbnail_url': thumbnailUrl,
+        'language': language,
+        'word_count': wordCount,
+        'difficulty': difficulty,
+        'quiz_available': quizAvailable,
+        'categories': categories.map((c) => c.toJson()).toList(),
+      };
+
   String get difficultyLabel =>
       difficulty.isNotEmpty ? difficulty[0].toUpperCase() + difficulty.substring(1) : 'Medium';
 
@@ -73,6 +89,12 @@ class CategoryModel {
         name: json['name'] as String? ?? '',
         iconName: json['icon'] as String?,
       );
+
+  Map<String, dynamic> toJson() => {
+        'id': id,
+        'name': name,
+        'icon': iconName,
+      };
 }
 
 class QuizQuestionModel {
@@ -82,6 +104,7 @@ class QuizQuestionModel {
   final String optionB;
   final String optionC;
   final String optionD;
+  final String correctOption;
   final String difficulty;
 
   const QuizQuestionModel({
@@ -91,6 +114,7 @@ class QuizQuestionModel {
     required this.optionB,
     required this.optionC,
     required this.optionD,
+    this.correctOption = 'a',
     required this.difficulty,
   });
 
@@ -101,8 +125,20 @@ class QuizQuestionModel {
         optionB: json['option_b'] as String? ?? '',
         optionC: json['option_c'] as String? ?? '',
         optionD: json['option_d'] as String? ?? '',
+        correctOption: json['correct_option'] as String? ?? 'a',
         difficulty: json['difficulty'] as String? ?? 'medium',
       );
+
+  Map<String, dynamic> toJson() => {
+        'id': id,
+        'question': question,
+        'option_a': optionA,
+        'option_b': optionB,
+        'option_c': optionC,
+        'option_d': optionD,
+        'correct_option': correctOption,
+        'difficulty': difficulty,
+      };
 
   Map<String, String> get optionsMap => {
         'a': optionA,
@@ -164,6 +200,26 @@ class AnswerResultModel {
       );
 }
 
+class GameCompleteModel {
+  final int sessionId;
+  final ScoreBreakdownModel scoreBreakdown;
+  final int newStreak;
+
+  const GameCompleteModel({
+    required this.sessionId,
+    required this.scoreBreakdown,
+    required this.newStreak,
+  });
+
+  factory GameCompleteModel.fromJson(Map<String, dynamic> json) => GameCompleteModel(
+        sessionId: json['session_id'] as int? ?? 0,
+        scoreBreakdown: ScoreBreakdownModel.fromJson(
+          json['score_breakdown'] as Map<String, dynamic>? ?? {},
+        ),
+        newStreak: json['new_streak'] as int? ?? 1,
+      );
+}
+
 class ScoreBreakdownModel {
   final int correctAnswers;
   final int totalQuestions;
@@ -205,124 +261,13 @@ class ScoreBreakdownModel {
         levelBefore: json['level_before'] as int? ?? 1,
         levelAfter: json['level_after'] as int? ?? 1,
         leveledUp: json['leveled_up'] as bool? ?? false,
-        newAchievements: (json['new_achievements'] as List<dynamic>?)
-                ?.map((e) => e.toString())
-                .toList() ??
-            const [],
+        newAchievements: (json['new_achievements'] as List<dynamic>? ?? [])
+            .map((e) => e.toString())
+            .toList(),
       );
 
-  bool get isPerfect => totalQuestions > 0 && correctAnswers == totalQuestions;
   double get accuracy => totalQuestions > 0 ? correctAnswers / totalQuestions : 0.0;
-}
-
-class GameCompleteModel {
-  final int sessionId;
-  final ScoreBreakdownModel scoreBreakdown;
-  final int newStreak;
-
-  const GameCompleteModel({
-    required this.sessionId,
-    required this.scoreBreakdown,
-    required this.newStreak,
-  });
-
-  factory GameCompleteModel.fromJson(Map<String, dynamic> json) => GameCompleteModel(
-        sessionId: json['session_id'] as int? ?? 0,
-        scoreBreakdown: json['score_breakdown'] != null
-            ? ScoreBreakdownModel.fromJson(json['score_breakdown'] as Map<String, dynamic>)
-            : const ScoreBreakdownModel(
-                correctAnswers: 0,
-                totalQuestions: 0,
-                baseScore: 0,
-                speedBonus: 0,
-                perfectBonus: 0,
-                dailyMultiplier: 1.0,
-                finalScore: 0,
-                xpEarned: 0,
-                levelBefore: 1,
-                levelAfter: 1,
-                leveledUp: false,
-              ),
-        newStreak: json['new_streak'] as int? ?? 0,
-      );
-}
-
-class UserProfileModel {
-  final String name;
-  final List<String> interests;
-  final int xp;
-  final int level;
-  final int totalGames;
-  final int totalScore;
-  final int currentStreak;
-  final int longestStreak;
-  final int perfectQuizzes;
-  final int articlesRead;
-
-  const UserProfileModel({
-    required this.name,
-    this.interests = const [],
-    this.xp = 0,
-    this.level = 1,
-    this.totalGames = 0,
-    this.totalScore = 0,
-    this.currentStreak = 0,
-    this.longestStreak = 0,
-    this.perfectQuizzes = 0,
-    this.articlesRead = 0,
-  });
-
-  UserProfileModel copyWith({
-    String? name,
-    List<String>? interests,
-    int? xp,
-    int? level,
-    int? totalGames,
-    int? totalScore,
-    int? currentStreak,
-    int? longestStreak,
-    int? perfectQuizzes,
-    int? articlesRead,
-  }) =>
-      UserProfileModel(
-        name: name ?? this.name,
-        interests: interests ?? this.interests,
-        xp: xp ?? this.xp,
-        level: level ?? this.level,
-        totalGames: totalGames ?? this.totalGames,
-        totalScore: totalScore ?? this.totalScore,
-        currentStreak: currentStreak ?? this.currentStreak,
-        longestStreak: longestStreak ?? this.longestStreak,
-        perfectQuizzes: perfectQuizzes ?? this.perfectQuizzes,
-        articlesRead: articlesRead ?? this.articlesRead,
-      );
-
-  Map<String, dynamic> toJson() => {
-        'name': name,
-        'interests': interests,
-        'xp': xp,
-        'level': level,
-        'totalGames': totalGames,
-        'totalScore': totalScore,
-        'currentStreak': currentStreak,
-        'longestStreak': longestStreak,
-        'perfectQuizzes': perfectQuizzes,
-        'articlesRead': articlesRead,
-      };
-
-  factory UserProfileModel.fromJson(Map<String, dynamic> json) => UserProfileModel(
-        name: json['name'] as String? ?? 'Explorer',
-        interests: (json['interests'] as List<dynamic>?)?.map((e) => e.toString()).toList() ??
-            const [],
-        xp: json['xp'] as int? ?? 0,
-        level: json['level'] as int? ?? 1,
-        totalGames: json['totalGames'] as int? ?? 0,
-        totalScore: json['totalScore'] as int? ?? 0,
-        currentStreak: json['currentStreak'] as int? ?? 0,
-        longestStreak: json['longestStreak'] as int? ?? 0,
-        perfectQuizzes: json['perfectQuizzes'] as int? ?? 0,
-        articlesRead: json['articlesRead'] as int? ?? 0,
-      );
+  bool get isPerfect => correctAnswers == totalQuestions && totalQuestions > 0;
 }
 
 class LeaderboardEntryModel {
@@ -339,16 +284,49 @@ class LeaderboardEntryModel {
     required this.username,
     this.avatarUrl,
     required this.score,
-    required this.isCurrentUser,
+    this.isCurrentUser = false,
   });
 
   factory LeaderboardEntryModel.fromJson(Map<String, dynamic> json) => LeaderboardEntryModel(
-        rank: json['rank'] as int? ?? 1,
+        rank: json['rank'] as int? ?? 0,
         userId: json['user_id'] as int? ?? 0,
         username: json['username'] as String? ?? 'Explorer',
         avatarUrl: json['avatar_url'] as String?,
         score: json['score'] as int? ?? 0,
         isCurrentUser: json['is_current_user'] as bool? ?? false,
+      );
+}
+
+class UserStatsModel {
+  final int xp;
+  final int level;
+  final int currentStreak;
+  final int longestStreak;
+  final int totalGames;
+  final int perfectQuizzes;
+  final int articlesRead;
+  final int totalScore;
+
+  const UserStatsModel({
+    this.xp = 0,
+    this.level = 1,
+    this.currentStreak = 0,
+    this.longestStreak = 0,
+    this.totalGames = 0,
+    this.perfectQuizzes = 0,
+    this.articlesRead = 0,
+    this.totalScore = 0,
+  });
+
+  factory UserStatsModel.fromJson(Map<String, dynamic> json) => UserStatsModel(
+        xp: json['xp'] as int? ?? 0,
+        level: json['level'] as int? ?? 1,
+        currentStreak: json['current_streak'] as int? ?? 0,
+        longestStreak: json['longest_streak'] as int? ?? 0,
+        totalGames: json['total_games'] as int? ?? 0,
+        perfectQuizzes: json['perfect_quizzes'] as int? ?? 0,
+        articlesRead: json['articles_read'] as int? ?? 0,
+        totalScore: json['total_score'] as int? ?? 0,
       );
 }
 
@@ -375,11 +353,88 @@ class AchievementModel {
         id: json['id'] as int? ?? 0,
         name: json['name'] as String? ?? '',
         description: json['description'] as String? ?? '',
-        iconCode: json['icon'] as String? ?? 'trophy',
+        iconCode: json['icon_code'] as String? ?? 'trophy',
         xpReward: json['xp_reward'] as int? ?? 50,
         unlocked: json['unlocked'] as bool? ?? false,
         unlockedAt: json['unlocked_at'] != null
             ? DateTime.tryParse(json['unlocked_at'] as String)
             : null,
+      );
+}
+
+class UserProfileModel {
+  final String name;
+  final List<String> interests;
+  final int xp;
+  final int level;
+  final int currentStreak;
+  final int longestStreak;
+  final int totalGames;
+  final int perfectQuizzes;
+  final int articlesRead;
+  final int totalScore;
+
+  const UserProfileModel({
+    required this.name,
+    required this.interests,
+    this.xp = 0,
+    this.level = 1,
+    this.currentStreak = 0,
+    this.longestStreak = 0,
+    this.totalGames = 0,
+    this.perfectQuizzes = 0,
+    this.articlesRead = 0,
+    this.totalScore = 0,
+  });
+
+  factory UserProfileModel.fromJson(Map<String, dynamic> json) => UserProfileModel(
+        name: json['name'] as String? ?? 'Explorer',
+        interests: (json['interests'] as List<dynamic>? ?? []).map((e) => e.toString()).toList(),
+        xp: json['xp'] as int? ?? 0,
+        level: json['level'] as int? ?? 1,
+        currentStreak: json['current_streak'] as int? ?? 0,
+        longestStreak: json['longest_streak'] as int? ?? 0,
+        totalGames: json['total_games'] as int? ?? 0,
+        perfectQuizzes: json['perfect_quizzes'] as int? ?? 0,
+        articlesRead: json['articles_read'] as int? ?? 0,
+        totalScore: json['total_score'] as int? ?? 0,
+      );
+
+  Map<String, dynamic> toJson() => {
+        'name': name,
+        'interests': interests,
+        'xp': xp,
+        'level': level,
+        'current_streak': currentStreak,
+        'longest_streak': longestStreak,
+        'total_games': totalGames,
+        'perfect_quizzes': perfectQuizzes,
+        'articles_read': articlesRead,
+        'total_score': totalScore,
+      };
+
+  UserProfileModel copyWith({
+    String? name,
+    List<String>? interests,
+    int? xp,
+    int? level,
+    int? currentStreak,
+    int? longestStreak,
+    int? totalGames,
+    int? perfectQuizzes,
+    int? articlesRead,
+    int? totalScore,
+  }) =>
+      UserProfileModel(
+        name: name ?? this.name,
+        interests: interests ?? this.interests,
+        xp: xp ?? this.xp,
+        level: level ?? this.level,
+        currentStreak: currentStreak ?? this.currentStreak,
+        longestStreak: longestStreak ?? this.longestStreak,
+        totalGames: totalGames ?? this.totalGames,
+        perfectQuizzes: perfectQuizzes ?? this.perfectQuizzes,
+        articlesRead: articlesRead ?? this.articlesRead,
+        totalScore: totalScore ?? this.totalScore,
       );
 }

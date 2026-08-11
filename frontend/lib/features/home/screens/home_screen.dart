@@ -20,6 +20,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with TickerProviderStat
   late AnimationController _glowCtrl;
   late AnimationController _spinCtrl;
   bool _isAnimating = false;
+  DateTime? _lastBackPress;
 
   @override
   void initState() {
@@ -83,8 +84,6 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with TickerProviderStat
     return 'Good Night';
   }
 
-  DateTime? _lastBackPress;
-
   @override
   Widget build(BuildContext context) {
     final user = ref.watch(profileProvider).profile;
@@ -121,160 +120,163 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with TickerProviderStat
           backgroundColor: Colors.transparent,
           body: SafeArea(
             child: CustomScrollView(
-            physics: const BouncingScrollPhysics(),
-            slivers: [
-              SliverPadding(
-                padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
-                sliver: SliverList(
-                  delegate: SliverChildListDelegate([
-                    // ── Header Bar ──
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        Row(
-                          children: [
-                            Container(
-                              padding: const EdgeInsets.all(8),
-                              decoration: BoxDecoration(
-                                color: AppColors.accent.withOpacity(0.15),
-                                borderRadius: BorderRadius.circular(10),
-                                border: Border.all(color: AppColors.accent.withOpacity(0.3)),
-                              ),
-                              child: const Icon(
-                                Icons.casino_rounded,
-                                color: AppColors.accent,
-                                size: 20,
-                              ),
-                            ),
-                            const SizedBox(width: 10),
-                            Text('WIKI ROULETTE',
-                                style: AppTextStyles.overline(color: AppColors.accent)),
-                          ],
-                        ),
-
-                        // Streak badge
-                        GlassCard(
-                          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                          borderRadius: BorderRadius.circular(20),
-                          child: Row(
-                            mainAxisSize: MainAxisSize.min,
+              physics: const BouncingScrollPhysics(),
+              slivers: [
+                SliverPadding(
+                  padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+                  sliver: SliverList(
+                    delegate: SliverChildListDelegate([
+                      // ── Header Bar ──
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Row(
                             children: [
-                              const Icon(
-                                Icons.local_fire_department_rounded,
-                                color: AppColors.streak,
-                                size: 18,
+                              Container(
+                                padding: const EdgeInsets.all(8),
+                                decoration: BoxDecoration(
+                                  color: AppColors.accent.withOpacity(0.15),
+                                  borderRadius: BorderRadius.circular(10),
+                                  border: Border.all(color: AppColors.accent.withOpacity(0.3)),
+                                ),
+                                child: const Icon(
+                                  Icons.casino_rounded,
+                                  color: AppColors.accent,
+                                  size: 20,
+                                ),
                               ),
-                              const SizedBox(width: 4),
-                              Text(
-                                '${user.currentStreak}',
-                                style: AppTextStyles.bodyMedium(color: AppColors.streak),
-                              ),
+                              const SizedBox(width: 10),
+                              Text('WIKI ROULETTE',
+                                  style: AppTextStyles.overline(color: AppColors.accent)),
                             ],
                           ),
-                        ),
-                      ],
-                    ).animate().fadeIn(duration: 400.ms),
 
-                    const SizedBox(height: 28),
-
-                    // ── Greeting ──
-                    Text('${_greeting()},',
-                        style: AppTextStyles.body(color: AppColors.textMuted)),
-                    const SizedBox(height: 2),
-                    Text(
-                      user.name,
-                      style: AppTextStyles.screenTitle(),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                    const SizedBox(height: 4),
-                    Text(
-                      'Ready to explore the unknown?',
-                      style: AppTextStyles.body(),
-                    ),
-
-                    const SizedBox(height: 36),
-
-                    // ── Central SPIN Button ──
-                    Center(
-                      child: _SpinButton(
-                        onTap: _onSpin,
-                        isLoading: roulette.status == RouletteStatus.spinning,
-                        glowCtrl: _glowCtrl,
-                      ),
-                    ),
-
-                    const SizedBox(height: 14),
-                    Center(
-                      child: Text(
-                        'Tap to discover an article',
-                        style: AppTextStyles.metadata(color: AppColors.textMuted),
-                      ),
-                    ),
-
-                    const SizedBox(height: 36),
-
-                    // ── Quick Actions ──
-                    Row(
-                      children: [
-                        Expanded(
-                          child: _QuickActionCard(
-                            icon: Icons.auto_stories_rounded,
-                            label: 'DISCOVER\nTOPICS',
-                            color: AppColors.secondaryAccent,
-                            onTap: () => context.go('/discover'),
+                          // Streak badge
+                          GlassCard(
+                            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                            borderRadius: BorderRadius.circular(20),
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                const Icon(
+                                  Icons.local_fire_department_rounded,
+                                  color: AppColors.streak,
+                                  size: 18,
+                                ),
+                                const SizedBox(width: 4),
+                                Text(
+                                  '${user.currentStreak}',
+                                  style: AppTextStyles.bodyMedium(color: AppColors.streak),
+                                ),
+                              ],
+                            ),
                           ),
+                        ],
+                      ).animate().fadeIn(duration: 400.ms),
+
+                      const SizedBox(height: 28),
+
+                      // ── Greeting ──
+                      Text('${_greeting()},',
+                          style: AppTextStyles.body(color: AppColors.textMuted)),
+                      const SizedBox(height: 2),
+                      Text(
+                        user.name,
+                        style: AppTextStyles.screenTitle(),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        'Ready to explore the unknown?',
+                        style: AppTextStyles.body(),
+                      ),
+
+                      const SizedBox(height: 36),
+
+                      // ── Central SPIN Button ──
+                      Center(
+                        child: _SpinButton(
+                          onTap: _onSpin,
+                          isLoading: roulette.status == RouletteStatus.spinning,
+                          glowCtrl: _glowCtrl,
                         ),
-                        const SizedBox(width: 12),
-                        Expanded(
-                          child: _QuickActionCard(
-                            icon: Icons.search_rounded,
-                            label: 'SEARCH\nWIKIPEDIA',
-                            color: AppColors.accent,
-                            onTap: () => context.push('/search'),
+                      ),
+
+                      const SizedBox(height: 14),
+                      Center(
+                        child: Text(
+                          'Tap to discover an article',
+                          style: AppTextStyles.metadata(color: AppColors.textMuted),
+                        ),
+                      ),
+
+                      const SizedBox(height: 36),
+
+                      // ── Quick Actions ──
+                      Row(
+                        children: [
+                          Expanded(
+                            child: _QuickActionCard(
+                              icon: Icons.auto_stories_rounded,
+                              label: 'DISCOVER\nTOPICS',
+                              color: AppColors.secondaryAccent,
+                              onTap: () => context.go('/discover'),
+                            ),
                           ),
-                        ),
-                      ],
-                    ).animate().fadeIn(delay: 200.ms, duration: 400.ms).slideY(begin: 0.1),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: _QuickActionCard(
+                              icon: Icons.search_rounded,
+                              label: 'SEARCH\nWIKIPEDIA',
+                              color: AppColors.accent,
+                              onTap: () => context.push('/search'),
+                            ),
+                          ),
+                        ],
+                      ).animate().fadeIn(delay: 200.ms, duration: 400.ms).slideY(begin: 0.1),
 
-                    const SizedBox(height: 20),
+                      const SizedBox(height: 20),
 
-                    // ── Daily Challenge Card ──
-                    daily.when(
-                      data: (data) => data != null
-                          ? _DailyChallengeCard(
-                              data: data,
-                              onTap: () {
-                                final articleMap = data['article'] as Map<String, dynamic>?;
-                                final article = ArticleModel.fromJson(articleMap ??
-                                    {
-                                      'id': 10,
-                                      'wiki_page_id': 10,
-                                      'title': 'James Webb Space Telescope',
-                                      'slug': 'James_Webb_Space_Telescope',
-                                      'url':
-                                          'https://en.wikipedia.org/wiki/James_Webb_Space_Telescope',
-                                      'description': 'Space telescope for infrared astronomy',
-                                      'extract':
-                                          'The James Webb Space Telescope is a space telescope designed primarily to conduct infrared astronomy.',
-                                      'difficulty': 'medium',
-                                      'quiz_available': true,
-                                      'categories': [
-                                        {'id': 1, 'name': 'Space', 'icon': 'space'}
-                                      ],
-                                    });
-                                context.push('/article/reveal', extra: article);
-                              },
-                            )
-                          : const SizedBox(),
-                      loading: () => const SkeletonLoader(height: 80),
-                      error: (_, __) => const SizedBox(),
-                    ),
+                      // ── Daily Challenge Card ──
+                      daily.when(
+                        data: (data) => data != null
+                            ? _DailyChallengeCard(
+                                data: data,
+                                onTap: () {
+                                  final articleMap = data['article'] as Map<String, dynamic>?;
+                                  final article = ArticleModel.fromJson(articleMap ??
+                                      {
+                                        'id': 105,
+                                        'wiki_page_id': 1548325,
+                                        'title': 'James Webb Space Telescope',
+                                        'slug': 'James_Webb_Space_Telescope',
+                                        'url':
+                                            'https://en.wikipedia.org/wiki/James_Webb_Space_Telescope',
+                                        'description':
+                                            'NASA flagship infrared space observatory',
+                                        'extract':
+                                            'The James Webb Space Telescope (JWST) is a space telescope designed primarily to conduct infrared astronomy. As the largest optical telescope in space, its high resolution and sensitivity allow it to view objects too old, distant, or faint for the Hubble Space Telescope.',
+                                        'difficulty': 'medium',
+                                        'quiz_available': true,
+                                        'categories': [
+                                          {'id': 1, 'name': 'Space', 'icon': 'space'}
+                                        ],
+                                      });
+                                  context.push('/article/reveal', extra: article);
+                                },
+                              )
+                            : const SizedBox(),
+                        loading: () => const SkeletonLoader(height: 80),
+                        error: (_, __) => const SizedBox(),
+                      ),
 
-                    const SizedBox(height: 20),
-                  ]),
+                      const SizedBox(height: 20),
+                    ]),
+                  ),
                 ),
-              ),
+              ],
+            ),
           ),
         ),
       ),
@@ -282,9 +284,6 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with TickerProviderStat
   }
 }
 
-// ──────────────────────────────────────────────────────
-// Spin Button
-// ──────────────────────────────────────────────────────
 class _SpinButton extends StatefulWidget {
   final VoidCallback onTap;
   final bool isLoading;
@@ -383,9 +382,6 @@ class _SpinButtonState extends State<_SpinButton> with SingleTickerProviderState
   }
 }
 
-// ──────────────────────────────────────────────────────
-// Roulette Animation Overlay
-// ──────────────────────────────────────────────────────
 class _RouletteOverlay extends StatefulWidget {
   const _RouletteOverlay();
 
@@ -502,9 +498,6 @@ class _RouletteOverlayState extends State<_RouletteOverlay>
   }
 }
 
-// ──────────────────────────────────────────────────────
-// Quick Action Card
-// ──────────────────────────────────────────────────────
 class _QuickActionCard extends StatelessWidget {
   final IconData icon;
   final String label;
@@ -541,9 +534,6 @@ class _QuickActionCard extends StatelessWidget {
   }
 }
 
-// ──────────────────────────────────────────────────────
-// Daily Challenge Card
-// ──────────────────────────────────────────────────────
 class _DailyChallengeCard extends StatelessWidget {
   final Map<String, dynamic> data;
   final VoidCallback onTap;
