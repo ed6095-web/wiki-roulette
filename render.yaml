@@ -1,0 +1,23 @@
+services:
+  - type: web
+    name: wiki-roulette-backend
+    runtime: python
+    rootDir: backend
+    plan: free
+    buildCommand: pip install -r requirements.txt && alembic upgrade head
+    startCommand: uvicorn app.main:app --host 0.0.0.0 --port $PORT
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.11.9
+      - key: ENVIRONMENT
+        value: production
+      - key: CORS_ORIGINS
+        value: '["*"]'
+      - key: WIKIPEDIA_USER_AGENT
+        value: WikiRoulette/1.0 (contact@wikiroulette.app)
+      - key: DATABASE_URL
+        sync: false # Set in Render Dashboard (Supabase Async Connection Pooler)
+      - key: DATABASE_URL_SYNC
+        sync: false # Set in Render Dashboard (Supabase Direct Sync URL)
+      - key: JWT_SECRET
+        generateValue: true
