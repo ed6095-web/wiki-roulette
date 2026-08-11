@@ -21,6 +21,19 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
   bool _loading = false;
   Timer? _debounce;
 
+  static const List<(String, IconData)> _trendingSuggestions = [
+    ('James Webb Telescope', Icons.rocket_launch_rounded),
+    ('Quantum Computing', Icons.memory_rounded),
+    ('Ancient Rome', Icons.history_edu_rounded),
+    ('Great Barrier Reef', Icons.public_rounded),
+    ('Renaissance Art', Icons.palette_rounded),
+    ('Artificial Intelligence', Icons.psychology_rounded),
+    ('Deep Sea Creatures', Icons.pets_rounded),
+    ('Black Holes', Icons.brightness_3_rounded),
+    ('Industrial Revolution', Icons.factory_rounded),
+    ('Alexander the Great', Icons.shield_rounded),
+  ];
+
   @override
   void initState() {
     super.initState();
@@ -62,6 +75,11 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
     });
   }
 
+  void _applySuggestion(String topic) {
+    _ctrl.text = topic;
+    _onSearch(topic);
+  }
+
   @override
   Widget build(BuildContext context) {
     return AtmosphericBackground(
@@ -69,6 +87,7 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
         backgroundColor: Colors.transparent,
         body: SafeArea(
           child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               // ── Search Input Bar ──
               Padding(
@@ -101,7 +120,15 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
                                     ),
                                   ),
                                 )
-                              : null,
+                              : _ctrl.text.isNotEmpty
+                                  ? IconButton(
+                                      icon: const Icon(Icons.close_rounded, size: 18),
+                                      onPressed: () {
+                                        _ctrl.clear();
+                                        setState(() => _results = []);
+                                      },
+                                    )
+                                  : null,
                         ),
                       ),
                     ),
@@ -109,17 +136,47 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
                 ),
               ),
 
-              const SizedBox(height: 10),
+              const SizedBox(height: 14),
 
-              // ── Results List ──
+              // ── Suggestions or Results ──
               Expanded(
-                child: _results.isEmpty && _ctrl.text.length >= 2 && !_loading
-                    ? Center(
-                        child: Text(
-                          'No articles found for "${_ctrl.text}"',
-                          style: AppTextStyles.body(color: AppColors.textMuted),
-                          textAlign: TextAlign.center,
-                        ),
+                child: _results.isEmpty && !_loading
+                    ? ListView(
+                        physics: const BouncingScrollPhysics(),
+                        padding: const EdgeInsets.symmetric(horizontal: 20),
+                        children: [
+                          Text('TRENDING TOPIC SUGGESTIONS',
+                              style: AppTextStyles.overline(color: AppColors.accent)),
+                          const SizedBox(height: 12),
+                          Wrap(
+                            spacing: 8,
+                            runSpacing: 10,
+                            children: _trendingSuggestions.map((item) {
+                              return ActionChip(
+                                avatar: Icon(item.$2, size: 16, color: AppColors.secondaryAccent),
+                                label: Text(item.$1),
+                                backgroundColor: AppColors.cardSurface,
+                                side: const BorderSide(color: AppColors.glassBorder),
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(12),
+                                ),
+                                labelStyle: AppTextStyles.metadata(color: AppColors.textPrimary),
+                                onPressed: () => _applySuggestion(item.$1),
+                              );
+                            }).toList(),
+                          ).animate().fadeIn(duration: 400.ms),
+
+                          if (_ctrl.text.length >= 2) ...[
+                            const SizedBox(height: 36),
+                            Center(
+                              child: Text(
+                                'No articles found for "${_ctrl.text}"',
+                                style: AppTextStyles.body(color: AppColors.textMuted),
+                                textAlign: TextAlign.center,
+                              ),
+                            ),
+                          ],
+                        ],
                       )
                     : ListView.builder(
                         physics: const BouncingScrollPhysics(),

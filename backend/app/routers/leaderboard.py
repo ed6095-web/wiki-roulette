@@ -2,8 +2,9 @@ from fastapi import APIRouter, Depends, Query
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, func, desc
 from datetime import datetime, timezone, timedelta
+from typing import Optional
 from app.core.database import get_db
-from app.core.deps import get_current_user
+from app.core.deps import get_optional_user
 from app.models.user import User
 from app.models.game import GameSession
 from app.schemas.user import LeaderboardResponse, LeaderboardEntry
@@ -28,7 +29,7 @@ async def get_leaderboard(
     period: str = Query("weekly", pattern="^(daily|weekly|monthly|alltime)$"),
     limit: int = Query(50, ge=10, le=100),
     db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(get_current_user),
+    current_user: Optional[User] = Depends(get_optional_user),
 ):
     start = _period_start(period)
 
@@ -54,7 +55,7 @@ async def get_leaderboard(
         user = user_result.scalar_one_or_none()
         if not user:
             continue
-        is_me = user.id == current_user.id
+        is_me = current_user is not None and user.id == current_user.id
         if is_me:
             current_user_rank = rank
             current_user_score = row.total_score
@@ -67,8 +68,7 @@ async def get_leaderboard(
             is_current_user=is_me,
         ))
 
-    # If current user isn't in top list, fetch their rank
-    if current_user_rank is None:
+    if current_user and current_user_rank is None:
         my_result = await db.execute(
             select(func.sum(GameSession.score))
             .where(GameSession.user_id == current_user.id, GameSession.completed == True, GameSession.started_at >= start)

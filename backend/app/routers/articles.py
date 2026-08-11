@@ -3,14 +3,14 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 from datetime import datetime, timezone, timedelta
 from app.core.database import get_db
-from app.core.deps import get_current_user
+from app.core.deps import get_optional_user
 from app.models.user import User
 from app.models.article import Article, ArticleCategory
 from app.schemas.article import ArticleSchema, ArticleSearchResult, ArticleListResponse
 from app.services.wikipedia_service import wikipedia_service
 from app.services.quiz_service import generate_questions_from_extract
 from app.models.game import QuizQuestion
-from typing import List
+from typing import List, Optional
 
 router = APIRouter(prefix="/articles", tags=["articles"])
 
@@ -25,11 +25,9 @@ async def _get_or_cache_article(wiki_article, db: AsyncSession) -> Article:
     existing = result.scalar_one_or_none()
 
     if existing:
-        # Refresh cache if stale
         cache_age = datetime.now(timezone.utc) - existing.cached_at.replace(tzinfo=timezone.utc)
         if cache_age < timedelta(hours=CACHE_TTL_HOURS):
             return existing
-        # Update stale fields
         existing.extract = wiki_article.extract
         existing.thumbnail_url = wiki_article.thumbnail_url
         existing.description = wiki_article.description
@@ -38,7 +36,6 @@ async def _get_or_cache_article(wiki_article, db: AsyncSession) -> Article:
         await db.refresh(existing)
         return existing
 
-    # Compute difficulty from extract length
     word_count = wiki_article.word_count or 0
     if word_count < 100:
         difficulty = "easy"
@@ -60,9 +57,8 @@ async def _get_or_cache_article(wiki_article, db: AsyncSession) -> Article:
         difficulty=difficulty,
     )
     db.add(article)
-    await db.flush()  # get ID before generating questions
+    await db.flush()
 
-    # Tier 3: Generate questions for new articles
     if wiki_article.extract:
         questions, quiz_available = generate_questions_from_extract(
             wiki_article.extract, wiki_article.title
@@ -91,12 +87,8 @@ async def _get_or_cache_article(wiki_article, db: AsyncSession) -> Article:
 @router.get("/random", response_model=ArticleSchema)
 async def get_random_article(
     db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(get_current_user),
+    current_user: Optional[User] = Depends(get_optional_user),
 ):
-    """
-    Fetches a genuinely random Wikipedia main-namespace article.
-    Retries internally until a quiz-capable article is found (max 10 attempts).
-    """
     for attempt in range(10):
         wiki_article = await wikipedia_service.get_random_article()
         if not wiki_article:
@@ -104,24 +96,23 @@ async def get_random_article(
 
         article = await _get_or_cache_article(wiki_article, db)
 
-        # Skip articles marked quiz_unavailable only if this isn't the last attempt
         if not article.quiz_available and attempt < 9:
             continue
         return article
 
-    raise HTTPException(status_code=503, detail="Wikipedia is being Wikipedia 😅 — try again in a moment.")
+    raise HTTPException(status_code=503, detail="Wikipedia service temporarily unavailable. Please try again.")
 
 
 @router.get("/search", response_model=List[ArticleSearchResult])
 async def search_articles(
     q: str = Query(..., min_length=2, max_length=100),
     limit: int = Query(10, ge=1, le=20),
-    current_user: User = Depends(get_current_user),
+    current_user: Optional[User] = Depends(get_optional_user),
 ):
     results = await wikipedia_service.search_articles(q, limit)
     return [
         ArticleSearchResult(
-            wiki_page_id=0,  # OpenSearch doesn't return page IDs
+            wiki_page_id=0,
             title=r.title,
             description=r.description,
             thumbnail_url=r.thumbnail_url,
@@ -135,34 +126,10 @@ async def search_articles(
 async def get_article(
     article_id: int,
     db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(get_current_user),
+    current_user: Optional[User] = Depends(get_optional_user),
 ):
     result = await db.execute(select(Article).where(Article.id == article_id))
     article = result.scalar_one_or_none()
     if not article:
         raise HTTPException(status_code=404, detail="Article not found")
     return article
-
-
-@router.get("/{article_id}/related", response_model=List[ArticleSearchResult])
-async def get_related_articles(
-    article_id: int,
-    db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(get_current_user),
-):
-    result = await db.execute(select(Article).where(Article.id == article_id))
-    article = result.scalar_one_or_none()
-    if not article:
-        raise HTTPException(status_code=404, detail="Article not found")
-
-    related = await wikipedia_service.get_related_articles(article.title)
-    return [
-        ArticleSearchResult(
-            wiki_page_id=0,
-            title=r.title,
-            description=r.description,
-            thumbnail_url=r.thumbnail_url,
-            url=r.url,
-        )
-        for r in related
-    ]

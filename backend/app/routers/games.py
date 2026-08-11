@@ -2,9 +2,10 @@ from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, func
 from datetime import datetime, timezone
-from typing import List
+from typing import List, Optional
 from app.core.database import get_db
-from app.core.deps import get_current_user
+from app.core.deps import get_optional_user
+from app.core.security import hash_password
 from app.models.user import User
 from app.models.game import GameSession, QuizQuestion, UserAnswer, ArticleHistory
 from app.models.article import Article
@@ -19,13 +20,34 @@ import random
 router = APIRouter(prefix="/games", tags=["games"])
 
 
+async def _get_or_create_default_user(db: AsyncSession, user: Optional[User]) -> User:
+    if user:
+        return user
+    # Check for existing guest user
+    result = await db.execute(select(User).where(User.username == "Explorer"))
+    guest = result.scalar_one_or_none()
+    if not guest:
+        guest = User(
+            username="Explorer",
+            email="explorer@wikiroulette.app",
+            hashed_password=hash_password("GuestPass123!"),
+            xp=0,
+            level=1,
+        )
+        db.add(guest)
+        await db.commit()
+        await db.refresh(guest)
+    return guest
+
+
 @router.post("/start", response_model=StartGameResponse)
 async def start_game(
     payload: StartGameRequest,
     db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(get_current_user),
+    user_opt: Optional[User] = Depends(get_optional_user),
 ):
-    # Validate article
+    current_user = await _get_or_create_default_user(db, user_opt)
+
     result = await db.execute(select(Article).where(Article.id == payload.article_id))
     article = result.scalar_one_or_none()
     if not article:
@@ -33,7 +55,6 @@ async def start_game(
     if not article.quiz_available:
         raise HTTPException(status_code=422, detail="This article does not have enough quiz questions")
 
-    # Fetch questions for this article (Tier 1 + 2: already in DB)
     q_result = await db.execute(
         select(QuizQuestion).where(QuizQuestion.article_id == article.id)
     )
@@ -41,10 +62,8 @@ async def start_game(
     if not all_questions:
         raise HTTPException(status_code=422, detail="No quiz questions available for this article")
 
-    # Randomly select up to 5 questions
     selected = random.sample(all_questions, min(5, len(all_questions)))
 
-    # Create game session
     session = GameSession(
         user_id=current_user.id,
         article_id=article.id,
@@ -55,7 +74,6 @@ async def start_game(
     await db.commit()
     await db.refresh(session)
 
-    # Record article history
     history = ArticleHistory(
         user_id=current_user.id,
         article_id=article.id,
@@ -78,13 +96,13 @@ async def submit_answer(
     session_id: int,
     payload: SubmitAnswerRequest,
     db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(get_current_user),
+    user_opt: Optional[User] = Depends(get_optional_user),
 ):
-    # Validate session
+    current_user = await _get_or_create_default_user(db, user_opt)
+
     result = await db.execute(
         select(GameSession).where(
             GameSession.id == session_id,
-            GameSession.user_id == current_user.id,
             GameSession.completed == False,
         )
     )
@@ -92,7 +110,6 @@ async def submit_answer(
     if not session:
         raise HTTPException(status_code=404, detail="Active game session not found")
 
-    # Validate question
     q_result = await db.execute(
         select(QuizQuestion).where(QuizQuestion.id == payload.question_id)
     )
@@ -102,7 +119,6 @@ async def submit_answer(
 
     correct = payload.selected_option.lower() == question.correct_option.lower()
 
-    # Record answer
     answer = UserAnswer(
         user_id=current_user.id,
         game_session_id=session_id,
@@ -114,7 +130,6 @@ async def submit_answer(
     db.add(answer)
     await db.commit()
 
-    # Compute per-question score delta
     score_delta = 100 if correct else 0
     if correct:
         t = payload.response_time_ms
@@ -138,13 +153,13 @@ async def submit_answer(
 async def complete_game(
     session_id: int,
     db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(get_current_user),
+    user_opt: Optional[User] = Depends(get_optional_user),
 ):
-    # Validate session
+    current_user = await _get_or_create_default_user(db, user_opt)
+
     result = await db.execute(
         select(GameSession).where(
             GameSession.id == session_id,
-            GameSession.user_id == current_user.id,
             GameSession.completed == False,
         )
     )
@@ -152,7 +167,6 @@ async def complete_game(
     if not session:
         raise HTTPException(status_code=404, detail="Active game session not found")
 
-    # Fetch all answers for this session
     answers_result = await db.execute(
         select(UserAnswer).where(UserAnswer.game_session_id == session_id)
     )
@@ -175,7 +189,6 @@ async def complete_game(
     current_user.total_games += 1
     current_user.level = level_for_xp(current_user.xp)
 
-    # Update streak
     now = datetime.now(timezone.utc)
     if current_user.last_played_at:
         days_diff = (now.date() - current_user.last_played_at.date()).days
@@ -183,14 +196,12 @@ async def complete_game(
             current_user.current_streak += 1
         elif days_diff > 1:
             current_user.current_streak = 1
-        # days_diff == 0: same day, no streak change
     else:
         current_user.current_streak = 1
 
     current_user.longest_streak = max(current_user.longest_streak, current_user.current_streak)
     current_user.last_played_at = now
 
-    # Complete the session
     session.completed = True
     session.completed_at = now
     session.score = score_data["final_score"]
@@ -198,7 +209,6 @@ async def complete_game(
     if session.started_at:
         session.time_taken = int((now - session.started_at.replace(tzinfo=timezone.utc)).total_seconds())
 
-    # Mark history as completed
     history_result = await db.execute(
         select(ArticleHistory).where(
             ArticleHistory.user_id == current_user.id,
@@ -211,8 +221,6 @@ async def complete_game(
         history.time_spent_seconds = session.time_taken
 
     await db.flush()
-
-    # Check achievements
     new_achievements = await check_and_award_achievements(current_user, db)
     await db.commit()
 

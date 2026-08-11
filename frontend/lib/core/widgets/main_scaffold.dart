@@ -1,60 +1,86 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../constants/app_colors.dart';
-import '../constants/app_text_styles.dart';
 
-class MainScaffold extends StatefulWidget {
+final currentTabProvider = StateProvider<int>((ref) => 0);
+
+class MainScaffold extends ConsumerStatefulWidget {
   final Widget child;
   const MainScaffold({super.key, required this.child});
 
   @override
-  State<MainScaffold> createState() => _MainScaffoldState();
+  ConsumerState<MainScaffold> createState() => _MainScaffoldState();
 }
 
-class _MainScaffoldState extends State<MainScaffold> {
+class _MainScaffoldState extends ConsumerState<MainScaffold> {
+  DateTime? _lastBackPressTime;
   final List<int> _tabHistory = [0];
 
-  int _selectedIndex(BuildContext context) {
-    final location = GoRouterState.of(context).matchedLocation;
+  int _indexForLocation(String location) {
     if (location.startsWith('/discover')) return 1;
     if (location.startsWith('/leaderboard')) return 2;
     if (location.startsWith('/profile')) return 3;
     return 0;
   }
 
-  void _onTabSelected(int index, BuildContext context) {
+  void _onTabTapped(int index, BuildContext context) {
+    ref.read(currentTabProvider.notifier).state = index;
+    _tabHistory.add(index);
     final routes = ['/home', '/discover', '/leaderboard', '/profile'];
-    if (_selectedIndex(context) != index) {
-      _tabHistory.add(index);
-      context.go(routes[index]);
-    }
+    context.go(routes[index]);
   }
 
-  bool _handleBackPress(BuildContext context) {
+  void _handleBackPress(BuildContext context) {
+    final currentTab = ref.read(currentTabProvider);
+
     if (_tabHistory.length > 1) {
       _tabHistory.removeLast();
       final previousTab = _tabHistory.last;
+      ref.read(currentTabProvider.notifier).state = previousTab;
       final routes = ['/home', '/discover', '/leaderboard', '/profile'];
       context.go(routes[previousTab]);
-      return false; // Handled back navigation tab-to-tab
+      return;
+    }
+
+    if (currentTab != 0) {
+      _tabHistory.clear();
+      _tabHistory.add(0);
+      ref.read(currentTabProvider.notifier).state = 0;
+      context.go('/home');
+      return;
+    }
+
+    // Double tap back to exit on Home tab
+    final now = DateTime.now();
+    if (_lastBackPressTime == null ||
+        now.difference(_lastBackPressTime!) > const Duration(seconds: 2)) {
+      _lastBackPressTime = now;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: const Text(
+            'Press back again to exit Wiki Roulette',
+            style: TextStyle(fontFamily: 'Poppins'),
+          ),
+          duration: const Duration(seconds: 2),
+          backgroundColor: AppColors.surfaceElevated,
+          behavior: SnackBarBehavior.floating,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+        ),
+      );
     } else {
-      final current = _selectedIndex(context);
-      if (current != 0) {
-        _tabHistory.clear();
-        _tabHistory.add(0);
-        context.go('/home');
-        return false;
-      }
-      return true; // Exit app only from Home
+      // Exit application
+      Navigator.of(context).pop();
     }
   }
 
   @override
   Widget build(BuildContext context) {
-    final selected = _selectedIndex(context);
+    final location = GoRouterState.of(context).matchedLocation;
+    final selectedIndex = _indexForLocation(location);
 
     return PopScope(
-      canPop: selected == 0 && _tabHistory.length <= 1,
+      canPop: false,
       onPopInvoked: (didPop) {
         if (!didPop) {
           _handleBackPress(context);
@@ -71,8 +97,8 @@ class _MainScaffoldState extends State<MainScaffold> {
           ),
           child: NavigationBar(
             backgroundColor: AppColors.navBackground,
-            selectedIndex: selected,
-            onDestinationSelected: (index) => _onTabSelected(index, context),
+            selectedIndex: selectedIndex,
+            onDestinationSelected: (index) => _onTabTapped(index, context),
             destinations: const [
               NavigationDestination(
                 icon: Icon(Icons.casino_outlined),
