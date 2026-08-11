@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:flutter_animate/flutter_animate.dart';
-import 'package:cached_network_image/cached_network_image.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../../../data/models/models.dart';
 import '../../../core/constants/app_colors.dart';
@@ -38,9 +37,23 @@ class ArticleReadScreen extends ConsumerWidget {
     return facts.take(3).toList();
   }
 
+  IconData _iconForCategory(String? name) {
+    final cat = (name ?? '').toLowerCase();
+    if (cat.contains('space') || cat.contains('astron')) return Icons.rocket_launch_rounded;
+    if (cat.contains('sci') || cat.contains('phys')) return Icons.biotech_rounded;
+    if (cat.contains('tech') || cat.contains('comput')) return Icons.memory_rounded;
+    if (cat.contains('art') || cat.contains('music')) return Icons.palette_rounded;
+    if (cat.contains('geo') || cat.contains('world')) return Icons.public_rounded;
+    if (cat.contains('anim') || cat.contains('bio')) return Icons.pets_rounded;
+    return Icons.history_edu_rounded;
+  }
+
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final facts = _extractKeyFacts(article);
+    final categoryName =
+        article.categories.isNotEmpty ? article.categories.first.name : 'Knowledge';
+    final categoryIcon = _iconForCategory(categoryName);
 
     return AtmosphericBackground(
       child: Scaffold(
@@ -48,9 +61,9 @@ class ArticleReadScreen extends ConsumerWidget {
         body: CustomScrollView(
           physics: const BouncingScrollPhysics(),
           slivers: [
-            // ── App Bar with Hero Image ──
+            // ── Clean Vector App Bar ──
             SliverAppBar(
-              expandedHeight: 220,
+              expandedHeight: 140,
               pinned: true,
               backgroundColor: AppColors.background,
               leading: IconButton(
@@ -68,27 +81,27 @@ class ArticleReadScreen extends ConsumerWidget {
                 ),
               ],
               flexibleSpace: FlexibleSpaceBar(
-                background: article.thumbnailUrl != null
-                    ? CachedNetworkImage(
-                        imageUrl: article.thumbnailUrl!,
-                        fit: BoxFit.cover,
-                        color: Colors.black.withOpacity(0.4),
-                        colorBlendMode: BlendMode.darken,
-                      )
-                    : Container(
-                        decoration: const BoxDecoration(
-                          gradient: LinearGradient(colors: AppColors.cardGradient),
-                        ),
-                        child: const Center(
-                          child: Icon(Icons.public_rounded, size: 54, color: AppColors.textMuted),
-                        ),
-                      ),
+                background: Container(
+                  decoration: const BoxDecoration(
+                    gradient: LinearGradient(
+                      begin: Alignment.topLeft,
+                      end: Alignment.bottomRight,
+                      colors: [
+                        Color(0xFF1E1B4B),
+                        Color(0xFF0A0A0E),
+                      ],
+                    ),
+                  ),
+                  child: Center(
+                    child: Icon(categoryIcon, size: 48, color: AppColors.accent.withOpacity(0.4)),
+                  ),
+                ),
               ),
             ),
 
             // ── Article Content ──
             SliverPadding(
-              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 20),
+              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
               sliver: SliverList(
                 delegate: SliverChildListDelegate([
                   // Title
@@ -184,7 +197,7 @@ class ArticleReadScreen extends ConsumerWidget {
 
                   const SizedBox(height: 36),
 
-                  // ── Start Quiz CTA ──
+                  // ── Start Quiz CTA (Overflow-Proof) ──
                   if (article.quizAvailable)
                     SizedBox(
                       width: double.infinity,
@@ -203,8 +216,15 @@ class ArticleReadScreen extends ConsumerWidget {
                           mainAxisAlignment: MainAxisAlignment.center,
                           children: [
                             const Icon(Icons.quiz_rounded, color: Colors.white, size: 20),
-                            const SizedBox(width: 10),
-                            Text('START KNOWLEDGE CHALLENGE', style: AppTextStyles.button()),
+                            const SizedBox(width: 8),
+                            Flexible(
+                              child: Text(
+                                'START CHALLENGE',
+                                style: AppTextStyles.button(),
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            ),
                           ],
                         ),
                       ),

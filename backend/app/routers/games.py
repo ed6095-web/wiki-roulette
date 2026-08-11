@@ -5,7 +5,7 @@ from datetime import datetime, timezone
 from typing import List, Optional
 from app.core.database import get_db
 from app.core.deps import get_optional_user
-from app.core.security import hash_password
+from app.core.security import get_password_hash
 from app.models.user import User
 from app.models.game import GameSession, QuizQuestion, UserAnswer, ArticleHistory
 from app.models.article import Article
@@ -30,7 +30,7 @@ async def _get_or_create_default_user(db: AsyncSession, user: Optional[User]) ->
         guest = User(
             username="Explorer",
             email="explorer@wikiroulette.app",
-            hashed_password=hash_password("GuestPass123!"),
+            hashed_password=get_password_hash("GuestPass123!"),
             xp=0,
             level=1,
         )

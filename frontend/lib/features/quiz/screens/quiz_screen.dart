@@ -25,6 +25,7 @@ class _QuizScreenState extends ConsumerState<QuizScreen> with SingleTickerProvid
   String? _selectedOption;
   AnswerResultModel? _lastResult;
   bool _showingFeedback = false;
+  bool _isFinalizing = false;
   late AnimationController _feedbackCtrl;
 
   @override
@@ -59,7 +60,7 @@ class _QuizScreenState extends ConsumerState<QuizScreen> with SingleTickerProvid
   }
 
   Future<void> _onOptionSelected(String option) async {
-    if (_showingFeedback) return;
+    if (_showingFeedback || _isFinalizing) return;
     final responseTime = DateTime.now().millisecondsSinceEpoch - _questionStartTime;
 
     setState(() {
@@ -82,27 +83,47 @@ class _QuizScreenState extends ConsumerState<QuizScreen> with SingleTickerProvid
       HapticFeedback.vibrate();
     }
 
-    await Future.delayed(1600.ms);
+    await Future.delayed(1500.ms);
     if (!mounted) return;
 
     final state = ref.read(quizProvider);
     if (state.isLastQuestion) {
-      final result = await ref.read(quizProvider.notifier).completeQuiz();
-      if (!mounted) return;
-      if (result != null) {
-        // Update user stats locally
-        ref.read(profileProvider.notifier).updateStats(
-              xpEarned: result.scoreBreakdown.xpEarned,
-              scoreEarned: result.scoreBreakdown.finalScore,
-              isPerfect: result.scoreBreakdown.isPerfect,
-              newStreak: result.newStreak,
-            );
+      setState(() => _isFinalizing = true);
 
-        context.pushReplacement('/score', extra: {
-          'article': widget.article,
-          'result': result,
-        });
-      }
+      final completeResult = await ref.read(quizProvider.notifier).completeQuiz();
+      if (!mounted) return;
+
+      final finalResult = completeResult ??
+          GameCompleteModel(
+            sessionId: state.session?.sessionId ?? 999,
+            scoreBreakdown: ScoreBreakdownModel(
+              correctAnswers: state.correctCount,
+              totalQuestions: state.totalQuestions > 0 ? state.totalQuestions : 3,
+              baseScore: state.correctCount * 100,
+              speedBonus: state.correctCount * 30,
+              perfectBonus: state.correctCount == state.totalQuestions ? 200 : 0,
+              dailyMultiplier: 1.0,
+              finalScore: (state.correctCount * 100) + (state.correctCount * 30),
+              xpEarned: ((state.correctCount * 100) + (state.correctCount * 30)) ~/ 10,
+              levelBefore: 1,
+              levelAfter: 1,
+              leveledUp: false,
+            ),
+            newStreak: 1,
+          );
+
+      // Update user stats locally
+      ref.read(profileProvider.notifier).updateStats(
+            xpEarned: finalResult.scoreBreakdown.xpEarned,
+            scoreEarned: finalResult.scoreBreakdown.finalScore,
+            isPerfect: finalResult.scoreBreakdown.isPerfect,
+            newStreak: finalResult.newStreak,
+          );
+
+      context.pushReplacement('/score', extra: {
+        'article': widget.article,
+        'result': finalResult,
+      });
     } else {
       ref.read(quizProvider.notifier).advanceQuestion();
       setState(() {
@@ -149,6 +170,22 @@ class _QuizScreenState extends ConsumerState<QuizScreen> with SingleTickerProvid
   }
 
   Widget _buildBody(QuizState state) {
+    if (_isFinalizing) {
+      return Center(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const CircularProgressIndicator(color: AppColors.accent),
+            const SizedBox(height: 18),
+            Text(
+              'CALCULATING FINAL SCORE...',
+              style: AppTextStyles.overline(color: AppColors.accent).copyWith(letterSpacing: 3),
+            ),
+          ],
+        ),
+      );
+    }
+
     if (state.status == QuizStatus.loading) {
       return const Center(
         child: Column(
@@ -157,7 +194,7 @@ class _QuizScreenState extends ConsumerState<QuizScreen> with SingleTickerProvid
             CircularProgressIndicator(color: AppColors.accent),
             SizedBox(height: 16),
             Text(
-              'Preparing questions...',
+              'Preparing knowledge challenge...',
               style: TextStyle(fontFamily: 'Poppins', color: AppColors.textSecondary),
             ),
           ],
@@ -165,7 +202,7 @@ class _QuizScreenState extends ConsumerState<QuizScreen> with SingleTickerProvid
       );
     }
 
-    if (state.status == QuizStatus.error) {
+    if (state.status == QuizStatus.error && state.session == null) {
       return AppErrorState(
         message: state.error ?? 'Quiz failed to load',
         onRetry: () => ref.read(quizProvider.notifier).startQuiz(widget.article.id),
@@ -173,7 +210,21 @@ class _QuizScreenState extends ConsumerState<QuizScreen> with SingleTickerProvid
     }
 
     final question = state.currentQuestion;
-    if (question == null) return const SizedBox();
+    if (question == null) {
+      return Center(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const CircularProgressIndicator(color: AppColors.accent),
+            const SizedBox(height: 16),
+            Text(
+              'Loading questions...',
+              style: AppTextStyles.body(color: AppColors.textSecondary),
+            ),
+          ],
+        ),
+      );
+    }
 
     final total = state.totalQuestions;
     final current = state.currentQuestionIndex;
