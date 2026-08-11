@@ -40,3 +40,11 @@ class ArticleSearchResult(BaseModel):
 class ArticleListResponse(BaseModel):
     articles: List[ArticleSchema]
     total: int
+
+
+class DailyChallengeResponse(BaseModel):
+    date: datetime
+    article: ArticleSchema
+    completed: bool = False
+
+    model_config = {"from_attributes": True}
