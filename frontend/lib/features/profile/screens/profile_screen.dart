@@ -6,6 +6,7 @@ import '../../auth/providers/auth_provider.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../core/constants/app_text_styles.dart';
 import '../../../core/widgets/core_widgets.dart';
+import '../../../core/widgets/main_scaffold.dart';
 
 class ProfileScreen extends ConsumerWidget {
   const ProfileScreen({super.key});
@@ -14,234 +15,245 @@ class ProfileScreen extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final user = ref.watch(profileProvider).profile;
 
-    return AtmosphericBackground(
-      glowAlignment: Alignment.topRight,
-      child: Scaffold(
-        backgroundColor: Colors.transparent,
-        body: SafeArea(
-          child: CustomScrollView(
-            physics: const BouncingScrollPhysics(),
-            slivers: [
-              SliverPadding(
-                padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
-                sliver: SliverList(
-                  delegate: SliverChildListDelegate([
-                    // Header Bar
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        Text('EXPLORER PROFILE',
-                            style: AppTextStyles.overline(color: AppColors.accent)),
-                        IconButton(
-                          icon: const Icon(Icons.settings_outlined,
-                              color: AppColors.textSecondary),
-                          onPressed: () => context.push('/settings'),
-                        ),
-                      ],
-                    ),
-
-                    const SizedBox(height: 20),
-
-                    // ── Avatar & Identity ──
-                    Center(
-                      child: Column(
+    return PopScope(
+      canPop: false,
+      onPopInvoked: (didPop) {
+        if (!didPop) {
+          ref.read(currentTabProvider.notifier).state = 0;
+          context.go('/home');
+        }
+      },
+      child: AtmosphericBackground(
+        glowAlignment: Alignment.topRight,
+        child: Scaffold(
+          backgroundColor: Colors.transparent,
+          body: SafeArea(
+            child: CustomScrollView(
+              physics: const BouncingScrollPhysics(),
+              slivers: [
+                SliverPadding(
+                  padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+                  sliver: SliverList(
+                    delegate: SliverChildListDelegate([
+                      // Header Bar
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
-                          Container(
-                            width: 80,
-                            height: 80,
-                            decoration: BoxDecoration(
-                              shape: BoxShape.circle,
-                              gradient: const LinearGradient(
-                                colors: [AppColors.accent, AppColors.secondaryAccent],
-                                begin: Alignment.topLeft,
-                                end: Alignment.bottomRight,
-                              ),
-                              boxShadow: [
-                                BoxShadow(
-                                  color: AppColors.accent.withOpacity(0.35),
-                                  blurRadius: 18,
-                                  spreadRadius: 2,
+                          Text('EXPLORER PROFILE',
+                              style: AppTextStyles.overline(color: AppColors.accent)),
+                          IconButton(
+                            icon: const Icon(Icons.settings_outlined,
+                                color: AppColors.textSecondary),
+                            onPressed: () => context.push('/settings'),
+                          ),
+                        ],
+                      ),
+
+                      const SizedBox(height: 20),
+
+                      // ── Avatar & Identity ──
+                      Center(
+                        child: Column(
+                          children: [
+                            Container(
+                              width: 80,
+                              height: 80,
+                              decoration: BoxDecoration(
+                                shape: BoxShape.circle,
+                                gradient: const LinearGradient(
+                                  colors: [AppColors.accent, AppColors.secondaryAccent],
+                                  begin: Alignment.topLeft,
+                                  end: Alignment.bottomRight,
                                 ),
-                              ],
+                                boxShadow: [
+                                  BoxShadow(
+                                    color: AppColors.accent.withOpacity(0.35),
+                                    blurRadius: 18,
+                                    spreadRadius: 2,
+                                  ),
+                                ],
+                              ),
+                              child: Center(
+                                child: Text(
+                                  user.name.isNotEmpty ? user.name[0].toUpperCase() : 'E',
+                                  style: const TextStyle(
+                                    fontFamily: 'Poppins',
+                                    fontWeight: FontWeight.w700,
+                                    fontSize: 32,
+                                    color: Colors.white,
+                                  ),
+                                ),
+                              ),
+                            ).animate().scale(duration: 500.ms, curve: Curves.elasticOut),
+
+                            const SizedBox(height: 14),
+
+                            Text(
+                              user.name,
+                              style: AppTextStyles.sectionTitle(),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
                             ),
-                            child: Center(
+                            const SizedBox(height: 2),
+                            Text(
+                              'Level ${user.level} Explorer',
+                              style: AppTextStyles.body(color: AppColors.accent),
+                            ),
+
+                            const SizedBox(height: 16),
+
+                            // XP Progress
+                            SizedBox(
+                              width: 260,
+                              child: XpProgressBar(
+                                progress: _xpProgress(user.xp, user.level),
+                                currentXp: user.xp,
+                                nextLevelXp: _xpForLevel(user.level + 1),
+                                level: user.level,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ).animate().fadeIn(duration: 450.ms),
+
+                      // Selected Interests Tags
+                      if (user.interests.isNotEmpty) ...[
+                        const SizedBox(height: 24),
+                        Text('FAVORITE TOPICS',
+                            style: AppTextStyles.overline(color: AppColors.textMuted)),
+                        const SizedBox(height: 8),
+                        Wrap(
+                          spacing: 8,
+                          runSpacing: 8,
+                          children: user.interests.map((topic) {
+                            return Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                              decoration: BoxDecoration(
+                                color: AppColors.glass,
+                                borderRadius: BorderRadius.circular(8),
+                                border: Border.all(color: AppColors.glassBorder),
+                              ),
                               child: Text(
-                                user.name.isNotEmpty ? user.name[0].toUpperCase() : 'E',
-                                style: const TextStyle(
-                                  fontFamily: 'Poppins',
-                                  fontWeight: FontWeight.w700,
-                                  fontSize: 32,
-                                  color: Colors.white,
-                                ),
+                                topic,
+                                style: AppTextStyles.metadata(color: AppColors.secondaryAccent),
                               ),
-                            ),
-                          ).animate().scale(duration: 500.ms, curve: Curves.elasticOut),
-
-                          const SizedBox(height: 14),
-
-                          Text(
-                            user.name,
-                            style: AppTextStyles.sectionTitle(),
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                          ),
-                          const SizedBox(height: 2),
-                          Text(
-                            'Level ${user.level} Explorer',
-                            style: AppTextStyles.body(color: AppColors.accent),
-                          ),
-
-                          const SizedBox(height: 16),
-
-                          // XP Progress
-                          SizedBox(
-                            width: 260,
-                            child: XpProgressBar(
-                              progress: _xpProgress(user.xp, user.level),
-                              currentXp: user.xp,
-                              nextLevelXp: _xpForLevel(user.level + 1),
-                              level: user.level,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ).animate().fadeIn(duration: 450.ms),
-
-                    // Selected Interests Tags
-                    if (user.interests.isNotEmpty) ...[
-                      const SizedBox(height: 24),
-                      Text('FAVORITE TOPICS',
-                          style: AppTextStyles.overline(color: AppColors.textMuted)),
-                      const SizedBox(height: 8),
-                      Wrap(
-                        spacing: 8,
-                        runSpacing: 8,
-                        children: user.interests.map((topic) {
-                          return Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                            decoration: BoxDecoration(
-                              color: AppColors.glass,
-                              borderRadius: BorderRadius.circular(8),
-                              border: Border.all(color: AppColors.glassBorder),
-                            ),
-                            child: Text(
-                              topic,
-                              style: AppTextStyles.metadata(color: AppColors.secondaryAccent),
-                            ),
-                          );
-                        }).toList(),
-                      ),
-                    ],
-
-                    const SizedBox(height: 28),
-
-                    // ── Stats Grid (Responsive Aspect Ratio) ──
-                    Text('STATISTICS', style: AppTextStyles.overline(color: AppColors.accent)),
-                    const SizedBox(height: 10),
-
-                    GridView.count(
-                      shrinkWrap: true,
-                      physics: const NeverScrollableScrollPhysics(),
-                      crossAxisCount: 2,
-                      mainAxisSpacing: 10,
-                      crossAxisSpacing: 10,
-                      childAspectRatio: 1.6,
-                      children: [
-                        _StatCard('Articles Read', '${user.articlesRead}', Icons.auto_stories_rounded),
-                        _StatCard('Quizzes Done', '${user.totalGames}', Icons.quiz_rounded),
-                        _StatCard('Perfect Games', '${user.perfectQuizzes}', Icons.workspace_premium_rounded),
-                        _StatCard(
-                          'Total Points',
-                          _fmtScore(user.totalScore),
-                          Icons.insights_rounded,
+                            );
+                          }).toList(),
                         ),
                       ],
-                    ).animate(delay: 200.ms).fadeIn(duration: 400.ms),
 
-                    const SizedBox(height: 18),
+                      const SizedBox(height: 28),
 
-                    // ── Streak Card ──
-                    GlassCard(
-                      borderColor: AppColors.streak.withOpacity(0.3),
-                      child: Row(
+                      // ── Stats Grid ──
+                      Text('STATISTICS', style: AppTextStyles.overline(color: AppColors.accent)),
+                      const SizedBox(height: 10),
+
+                      GridView.count(
+                        shrinkWrap: true,
+                        physics: const NeverScrollableScrollPhysics(),
+                        crossAxisCount: 2,
+                        mainAxisSpacing: 10,
+                        crossAxisSpacing: 10,
+                        childAspectRatio: 1.6,
                         children: [
-                          Container(
-                            padding: const EdgeInsets.all(10),
-                            decoration: BoxDecoration(
-                              color: AppColors.streak.withOpacity(0.15),
-                              borderRadius: BorderRadius.circular(12),
-                            ),
-                            child: const Icon(
-                              Icons.local_fire_department_rounded,
-                              color: AppColors.streak,
-                              size: 26,
-                            ),
-                          ),
-                          const SizedBox(width: 14),
-                          Expanded(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text('STREAK PROGRESS',
-                                    style: AppTextStyles.overline(color: AppColors.streak)),
-                                Text(
-                                  '${user.currentStreak} Days Active',
-                                  style: AppTextStyles.cardTitle(),
-                                ),
-                                Text(
-                                  'Personal best: ${user.longestStreak} days',
-                                  style: AppTextStyles.metadata(),
-                                ),
-                              ],
-                            ),
+                          _StatCard('Articles Read', '${user.articlesRead}',
+                              Icons.auto_stories_rounded),
+                          _StatCard('Quizzes Done', '${user.totalGames}', Icons.quiz_rounded),
+                          _StatCard('Perfect Games', '${user.perfectQuizzes}',
+                              Icons.workspace_premium_rounded),
+                          _StatCard(
+                            'Total Points',
+                            _fmtScore(user.totalScore),
+                            Icons.insights_rounded,
                           ),
                         ],
-                      ),
-                    ).animate(delay: 300.ms).fadeIn(),
+                      ).animate(delay: 200.ms).fadeIn(duration: 400.ms),
 
-                    const SizedBox(height: 18),
+                      const SizedBox(height: 18),
 
-                    // ── Achievements Action ──
-                    GlassCard(
-                      onTap: () => context.push('/achievements'),
-                      child: Row(
-                        children: [
-                          Container(
-                            padding: const EdgeInsets.all(10),
-                            decoration: BoxDecoration(
-                              color: AppColors.accent.withOpacity(0.15),
-                              borderRadius: BorderRadius.circular(12),
+                      // ── Streak Card ──
+                      GlassCard(
+                        borderColor: AppColors.streak.withOpacity(0.3),
+                        child: Row(
+                          children: [
+                            Container(
+                              padding: const EdgeInsets.all(10),
+                              decoration: BoxDecoration(
+                                color: AppColors.streak.withOpacity(0.15),
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                              child: const Icon(
+                                Icons.local_fire_department_rounded,
+                                color: AppColors.streak,
+                                size: 26,
+                              ),
                             ),
-                            child: const Icon(
-                              Icons.emoji_events_rounded,
-                              color: AppColors.accent,
-                              size: 24,
+                            const SizedBox(width: 14),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text('STREAK PROGRESS',
+                                      style: AppTextStyles.overline(color: AppColors.streak)),
+                                  Text(
+                                    '${user.currentStreak} Days Active',
+                                    style: AppTextStyles.cardTitle(),
+                                  ),
+                                  Text(
+                                    'Personal best: ${user.longestStreak} days',
+                                    style: AppTextStyles.metadata(),
+                                  ),
+                                ],
+                              ),
                             ),
-                          ),
-                          const SizedBox(width: 14),
-                          Expanded(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text('ACHIEVEMENTS', style: AppTextStyles.cardTitle()),
-                                Text(
-                                  'View your unlocked milestone badges',
-                                  style: AppTextStyles.metadata(),
-                                ),
-                              ],
-                            ),
-                          ),
-                          const Icon(Icons.chevron_right_rounded,
-                              color: AppColors.textMuted, size: 20),
-                        ],
-                      ),
-                    ).animate(delay: 350.ms).fadeIn(),
+                          ],
+                        ),
+                      ).animate(delay: 300.ms).fadeIn(),
 
-                    const SizedBox(height: 30),
-                  ]),
+                      const SizedBox(height: 18),
+
+                      // ── Achievements Action ──
+                      GlassCard(
+                        onTap: () => context.push('/achievements'),
+                        child: Row(
+                          children: [
+                            Container(
+                              padding: const EdgeInsets.all(10),
+                              decoration: BoxDecoration(
+                                color: AppColors.accent.withOpacity(0.15),
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                              child: const Icon(
+                                Icons.emoji_events_rounded,
+                                color: AppColors.accent,
+                                size: 24,
+                              ),
+                            ),
+                            const SizedBox(width: 14),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text('ACHIEVEMENTS', style: AppTextStyles.cardTitle()),
+                                  Text(
+                                    'View your unlocked milestone badges',
+                                    style: AppTextStyles.metadata(),
+                                  ),
+                                ],
+                              ),
+                            ),
+                            const Icon(Icons.chevron_right_rounded,
+                                color: AppColors.textMuted, size: 20),
+                          ],
+                        ),
+                      ).animate(delay: 350.ms).fadeIn(),
+
+                      const SizedBox(height: 30),
+                    ]),
+                  ),
                 ),
-              ),
-            ],
+              ],
+            ),
           ),
         ),
       ),

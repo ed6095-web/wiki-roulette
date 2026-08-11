@@ -83,17 +83,44 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with TickerProviderStat
     return 'Good Night';
   }
 
+  DateTime? _lastBackPress;
+
   @override
   Widget build(BuildContext context) {
     final user = ref.watch(profileProvider).profile;
     final roulette = ref.watch(rouletteProvider);
     final daily = ref.watch(dailyChallengeProvider);
 
-    return AtmosphericBackground(
-      child: Scaffold(
-        backgroundColor: Colors.transparent,
-        body: SafeArea(
-          child: CustomScrollView(
+    return PopScope(
+      canPop: false,
+      onPopInvoked: (didPop) {
+        if (!didPop) {
+          final now = DateTime.now();
+          if (_lastBackPress == null ||
+              now.difference(_lastBackPress!) > const Duration(seconds: 2)) {
+            _lastBackPress = now;
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: const Text(
+                  'Press back again to exit Wiki Roulette',
+                  style: TextStyle(fontFamily: 'Poppins'),
+                ),
+                duration: const Duration(seconds: 2),
+                backgroundColor: AppColors.surfaceElevated,
+                behavior: SnackBarBehavior.floating,
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+              ),
+            );
+          } else {
+            SystemNavigator.pop();
+          }
+        }
+      },
+      child: AtmosphericBackground(
+        child: Scaffold(
+          backgroundColor: Colors.transparent,
+          body: SafeArea(
+            child: CustomScrollView(
             physics: const BouncingScrollPhysics(),
             slivers: [
               SliverPadding(
@@ -248,7 +275,6 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with TickerProviderStat
                   ]),
                 ),
               ),
-            ],
           ),
         ),
       ),

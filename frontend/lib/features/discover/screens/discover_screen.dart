@@ -1,161 +1,171 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:flutter_animate/flutter_animate.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../core/constants/app_text_styles.dart';
 import '../../../core/widgets/core_widgets.dart';
-import '../../home/providers/home_provider.dart';
+import '../../../core/widgets/main_scaffold.dart';
+import '../../../core/network/api_client.dart';
+import '../../../data/models/models.dart';
+
+final discoverCategoryProvider = StateProvider<String?>((ref) => null);
 
 class DiscoverScreen extends ConsumerWidget {
   const DiscoverScreen({super.key});
 
-  static const List<(IconData, String)> _categories = [
-    (Icons.history_edu_rounded, 'History'),
-    (Icons.rocket_launch_rounded, 'Space'),
-    (Icons.biotech_rounded, 'Science'),
-    (Icons.public_rounded, 'Geography'),
-    (Icons.memory_rounded, 'Technology'),
-    (Icons.palette_rounded, 'Arts'),
-    (Icons.pets_rounded, 'Animals'),
-    (Icons.sports_volleyball_rounded, 'Sports'),
-    (Icons.music_note_rounded, 'Music'),
-    (Icons.restaurant_rounded, 'Cuisine'),
-    (Icons.apartment_rounded, 'Architecture'),
-    (Icons.movie_rounded, 'Cinema'),
+  static const List<(String, String, IconData, Color)> _categories = [
+    ('History', 'Ancient civilizations & revolutions', Icons.history_edu_rounded, Color(0xFF6366F1)),
+    ('Science', 'Physics, chemistry & universe', Icons.biotech_rounded, Color(0xFF06B6D4)),
+    ('Space', 'Galaxies, planets & cosmos', Icons.rocket_launch_rounded, Color(0xFF8B5CF6)),
+    ('Technology', 'AI, computing & invention', Icons.memory_rounded, Color(0xFF10B981)),
+    ('Arts & Culture', 'Paintings, literature & music', Icons.palette_rounded, Color(0xFFF59E0B)),
+    ('Geography', 'Wonders, mountains & oceans', Icons.public_rounded, Color(0xFF3B82F6)),
+    ('Wildlife', 'Fauna, marine life & flora', Icons.pets_rounded, Color(0xFF14B8A6)),
+    ('Philosophy', 'Great thinkers & world logic', Icons.psychology_rounded, Color(0xFFEC4899)),
+    ('Architecture', 'Monuments, bridges & design', Icons.apartment_rounded, Color(0xFFF97316)),
+    ('Cinema', 'Film history & masterpieces', Icons.movie_rounded, Color(0xFF84CC16)),
+    ('Mythology', 'Legends, gods & folklore', Icons.shield_rounded, Color(0xFFA855F7)),
+    ('Sports', 'Athletic milestones & history', Icons.sports_volleyball_rounded, Color(0xFFEF4444)),
   ];
+
+  Future<void> _openTopic(BuildContext context, String topic) async {
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (_) => const Center(
+        child: CircularProgressIndicator(color: AppColors.accent),
+      ),
+    );
+
+    try {
+      final data = await ApiClient.instance.getArticleByTitle(topic);
+      if (context.mounted) Navigator.of(context).pop();
+      final article = ArticleModel.fromJson(data);
+      if (context.mounted) {
+        context.push('/article/reveal', extra: article);
+      }
+    } catch (_) {
+      if (context.mounted) Navigator.of(context).pop();
+    }
+  }
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    return AtmosphericBackground(
-      glowAlignment: Alignment.topLeft,
-      glowColor: AppColors.cyanGlow,
-      child: Scaffold(
-        backgroundColor: Colors.transparent,
-        body: SafeArea(
-          child: CustomScrollView(
-            physics: const BouncingScrollPhysics(),
-            slivers: [
-              SliverPadding(
-                padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
-                sliver: SliverList(
-                  delegate: SliverChildListDelegate([
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              'DISCOVER',
-                              style: AppTextStyles.overline(color: AppColors.secondaryAccent),
-                            ),
-                            const SizedBox(height: 2),
-                            Text('Explore Topics', style: AppTextStyles.screenTitle()),
-                          ],
-                        ),
-                        IconButton(
-                          icon: const Icon(
-                            Icons.search_rounded,
-                            color: AppColors.textSecondary,
-                            size: 26,
-                          ),
-                          onPressed: () => context.push('/search'),
-                        ),
-                      ],
-                    ),
-
-                    const SizedBox(height: 24),
-
-                    // ── Random Surprise Card ──
-                    GlassCard(
-                      onTap: () {
-                        ref.read(rouletteProvider.notifier).spin();
-                        context.go('/home');
-                      },
-                      borderColor: AppColors.accent.withOpacity(0.4),
-                      backgroundColor: AppColors.accent.withOpacity(0.06),
-                      child: Row(
-                        children: [
-                          Container(
-                            padding: const EdgeInsets.all(12),
-                            decoration: BoxDecoration(
-                              color: AppColors.accent.withOpacity(0.2),
-                              borderRadius: BorderRadius.circular(12),
-                            ),
-                            child: const Icon(
-                              Icons.casino_rounded,
-                              color: AppColors.accent,
-                              size: 26,
-                            ),
-                          ),
-                          const SizedBox(width: 14),
-                          Expanded(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text('SURPRISE ME',
-                                    style: AppTextStyles.overline(color: AppColors.accent)),
-                                const SizedBox(height: 2),
-                                Text(
-                                  'Explore a completely random article',
-                                  style: AppTextStyles.body(color: AppColors.textSecondary),
-                                ),
-                              ],
-                            ),
-                          ),
-                          const Icon(Icons.arrow_forward_ios_rounded,
-                              size: 14, color: AppColors.accent),
-                        ],
-                      ),
-                    ),
-
-                    const SizedBox(height: 28),
-
-                    Text('BROWSE BY CATEGORY',
-                        style: AppTextStyles.overline(color: AppColors.accent)),
-                    const SizedBox(height: 14),
-
-                    // ── Category Grid ──
-                    GridView.builder(
-                      shrinkWrap: true,
-                      physics: const NeverScrollableScrollPhysics(),
-                      gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                        crossAxisCount: 3,
-                        mainAxisSpacing: 10,
-                        crossAxisSpacing: 10,
-                        childAspectRatio: 1.05,
-                      ),
-                      itemCount: _categories.length,
-                      itemBuilder: (context, index) {
-                        final cat = _categories[index];
-                        return GlassCard(
-                          padding: const EdgeInsets.all(10),
-                          onTap: () => context.push('/search'),
-                          child: Column(
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            children: [
-                              Icon(cat.$1, size: 28, color: AppColors.secondaryAccent),
-                              const SizedBox(height: 6),
-                              Text(
-                                cat.$2,
-                                style: AppTextStyles.metadata(color: AppColors.textPrimary),
-                                textAlign: TextAlign.center,
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
-                              ),
-                            ],
-                          ),
-                        );
-                      },
-                    ),
-
-                    const SizedBox(height: 30),
-                  ]),
+    return PopScope(
+      canPop: false,
+      onPopInvoked: (didPop) {
+        if (!didPop) {
+          ref.read(currentTabProvider.notifier).state = 0;
+          context.go('/home');
+        }
+      },
+      child: AtmosphericBackground(
+        child: Scaffold(
+          backgroundColor: Colors.transparent,
+          body: SafeArea(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // ── Header ──
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(20, 16, 20, 0),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text('BROWSE BY TOPIC',
+                          style: AppTextStyles.overline(color: AppColors.accent)),
+                      const SizedBox(height: 4),
+                      Text('Explore Categories', style: AppTextStyles.screenTitle()),
+                    ],
+                  ).animate().fadeIn(duration: 400.ms),
                 ),
-              ),
-            ],
+
+                const SizedBox(height: 16),
+
+                // ── Category Grid ──
+                Expanded(
+                  child: GridView.builder(
+                    physics: const BouncingScrollPhysics(),
+                    padding: const EdgeInsets.fromLTRB(20, 0, 20, 20),
+                    gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                      crossAxisCount: 2,
+                      crossAxisSpacing: 12,
+                      mainAxisSpacing: 12,
+                      childAspectRatio: 1.15,
+                    ),
+                    itemCount: _categories.length,
+                    itemBuilder: (context, i) {
+                      final cat = _categories[i];
+                      return _CategoryCard(
+                        name: cat.$1,
+                        desc: cat.$2,
+                        icon: cat.$3,
+                        accentColor: cat.$4,
+                        onTap: () => _openTopic(context, cat.$1),
+                      )
+                          .animate(delay: Duration(milliseconds: i * 30))
+                          .fadeIn(duration: 300.ms)
+                          .scale(begin: const Offset(0.92, 0.92));
+                    },
+                  ),
+                ),
+              ],
+            ),
           ),
         ),
+      ),
+    );
+  }
+}
+
+class _CategoryCard extends StatelessWidget {
+  final String name;
+  final String desc;
+  final IconData icon;
+  final Color accentColor;
+  final VoidCallback onTap;
+
+  const _CategoryCard({
+    required this.name,
+    required this.desc,
+    required this.icon,
+    required this.accentColor,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return GlassCard(
+      onTap: onTap,
+      borderColor: accentColor.withOpacity(0.25),
+      padding: const EdgeInsets.all(14),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Container(
+            padding: const EdgeInsets.all(8),
+            decoration: BoxDecoration(
+              color: accentColor.withOpacity(0.15),
+              borderRadius: BorderRadius.circular(10),
+            ),
+            child: Icon(icon, color: accentColor, size: 22),
+          ),
+          const Spacer(),
+          Text(
+            name,
+            style: AppTextStyles.cardTitle().copyWith(fontSize: 14),
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+          ),
+          const SizedBox(height: 2),
+          Text(
+            desc,
+            style: AppTextStyles.metadata(),
+            maxLines: 2,
+            overflow: TextOverflow.ellipsis,
+          ),
+        ],
       ),
     );
   }

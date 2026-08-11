@@ -1,9 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../core/constants/app_text_styles.dart';
 import '../../../core/widgets/core_widgets.dart';
+import '../../../core/widgets/main_scaffold.dart';
 import '../../../core/network/api_client.dart';
 import '../../../data/models/models.dart';
 import '../../auth/providers/auth_provider.dart';
@@ -53,7 +55,6 @@ class LeaderboardScreen extends ConsumerWidget {
 
     final list = <LeaderboardEntryModel>[];
 
-    // Add competitors scaled by period
     for (int i = 0; i < _globalCompetitors.length; i++) {
       final comp = _globalCompetitors[i];
       final compScore = (comp.$2 * multiplier).round();
@@ -66,7 +67,6 @@ class LeaderboardScreen extends ConsumerWidget {
       ));
     }
 
-    // Insert user
     list.add(LeaderboardEntryModel(
       rank: 0,
       userId: 1,
@@ -75,10 +75,8 @@ class LeaderboardScreen extends ConsumerWidget {
       isCurrentUser: true,
     ));
 
-    // Sort descending by score
     list.sort((a, b) => b.score.compareTo(a.score));
 
-    // Assign final ranks
     return list.asMap().entries.map((e) {
       return LeaderboardEntryModel(
         rank: e.key + 1,
@@ -96,209 +94,218 @@ class LeaderboardScreen extends ConsumerWidget {
     final data = ref.watch(leaderboardDataProvider(period));
     final currentUser = ref.watch(profileProvider).profile;
 
-    return AtmosphericBackground(
-      child: Scaffold(
-        backgroundColor: Colors.transparent,
-        body: SafeArea(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              // ── Header Bar ──
-              Padding(
-                padding: const EdgeInsets.fromLTRB(20, 16, 20, 0),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        Text('LEAGUE RANKINGS',
-                            style: AppTextStyles.overline(color: AppColors.accent)),
-                        Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                          decoration: BoxDecoration(
-                            color: AppColors.warning.withOpacity(0.15),
-                            borderRadius: BorderRadius.circular(8),
-                            border: Border.all(color: AppColors.warning.withOpacity(0.3)),
-                          ),
-                          child: Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              const Icon(Icons.workspace_premium_rounded,
-                                  color: AppColors.warning, size: 14),
-                              const SizedBox(width: 4),
-                              Text('GOLD LEAGUE',
-                                  style: AppTextStyles.metadata(color: AppColors.warning)),
-                            ],
-                          ),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 4),
-                    Text('Global Explorers', style: AppTextStyles.screenTitle()),
-                  ],
-                ).animate().fadeIn(duration: 400.ms),
-              ),
-
-              const SizedBox(height: 14),
-
-              // ── Period Selector Tabs ──
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 20),
-                child: SingleChildScrollView(
-                  scrollDirection: Axis.horizontal,
-                  physics: const BouncingScrollPhysics(),
-                  child: Row(
-                    children: ['daily', 'weekly', 'monthly', 'alltime'].map((p) {
-                      final isSelected = p == period;
-                      return Padding(
-                        padding: const EdgeInsets.only(right: 8),
-                        child: GestureDetector(
-                          onTap: () => ref.read(leaderboardPeriodProvider.notifier).state = p,
-                          child: AnimatedContainer(
-                            duration: 200.ms,
-                            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+    return PopScope(
+      canPop: false,
+      onPopInvoked: (didPop) {
+        if (!didPop) {
+          ref.read(currentTabProvider.notifier).state = 0;
+          context.go('/home');
+        }
+      },
+      child: AtmosphericBackground(
+        child: Scaffold(
+          backgroundColor: Colors.transparent,
+          body: SafeArea(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // ── Header Bar ──
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(20, 16, 20, 0),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Text('LEAGUE RANKINGS',
+                              style: AppTextStyles.overline(color: AppColors.accent)),
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                             decoration: BoxDecoration(
-                              color: isSelected
-                                  ? AppColors.accent.withOpacity(0.2)
-                                  : AppColors.glass,
-                              borderRadius: BorderRadius.circular(10),
-                              border: Border.all(
-                                color: isSelected ? AppColors.accent : AppColors.glassBorder,
-                              ),
+                              color: AppColors.warning.withOpacity(0.15),
+                              borderRadius: BorderRadius.circular(8),
+                              border: Border.all(color: AppColors.warning.withOpacity(0.3)),
                             ),
-                            child: Text(
-                              p[0].toUpperCase() + p.substring(1),
-                              style: AppTextStyles.label(
-                                color: isSelected ? AppColors.accent : AppColors.textMuted,
-                              ),
-                            ),
-                          ),
-                        ),
-                      );
-                    }).toList(),
-                  ),
-                ),
-              ),
-
-              const SizedBox(height: 14),
-
-              // ── Entries List ──
-              Expanded(
-                child: data.when(
-                  loading: () => ListView.builder(
-                    padding: const EdgeInsets.symmetric(horizontal: 20),
-                    itemCount: 8,
-                    itemBuilder: (_, __) => const Padding(
-                      padding: EdgeInsets.only(bottom: 8),
-                      child: SkeletonLoader(height: 60),
-                    ),
-                  ),
-                  error: (_, __) => const SizedBox(),
-                  data: (raw) {
-                    final serverEntries = (raw['entries'] as List<dynamic>?)
-                            ?.map((e) =>
-                                LeaderboardEntryModel.fromJson(e as Map<String, dynamic>))
-                            .toList() ??
-                        [];
-
-                    final allEntries =
-                        _buildLeagueEntries(serverEntries, currentUser, period);
-
-                    final myEntry = allEntries.firstWhere(
-                      (e) => e.isCurrentUser,
-                      orElse: () => LeaderboardEntryModel(
-                        rank: 1,
-                        userId: 1,
-                        username: currentUser.name,
-                        score: currentUser.totalScore,
-                        isCurrentUser: true,
-                      ),
-                    );
-
-                    final nextRankEntry = myEntry.rank > 1
-                        ? allEntries.firstWhere((e) => e.rank == myEntry.rank - 1)
-                        : null;
-                    final ptsToOvertake = nextRankEntry != null
-                        ? (nextRankEntry.score - myEntry.score + 10)
-                        : 0;
-
-                    return Column(
-                      children: [
-                        // User position sticky highlight card
-                        Padding(
-                          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 4),
-                          child: GlassCard(
-                            backgroundColor: AppColors.accent.withOpacity(0.12),
-                            borderColor: AppColors.accent,
-                            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
                             child: Row(
+                              mainAxisSize: MainAxisSize.min,
                               children: [
-                                Container(
-                                  width: 34,
-                                  height: 34,
-                                  decoration: BoxDecoration(
-                                    color: AppColors.accent.withOpacity(0.2),
-                                    shape: BoxShape.circle,
-                                  ),
-                                  child: Center(
-                                    child: Text(
-                                      '#${myEntry.rank}',
-                                      style: AppTextStyles.label(color: AppColors.accent),
-                                    ),
-                                  ),
-                                ),
-                                const SizedBox(width: 12),
-                                Expanded(
-                                  child: Column(
-                                    crossAxisAlignment: CrossAxisAlignment.start,
-                                    children: [
-                                      Text(
-                                        '${myEntry.username} (You)',
-                                        style: AppTextStyles.bodyMedium(),
-                                      ),
-                                      Text(
-                                        ptsToOvertake > 0
-                                            ? '$ptsToOvertake pts to reach #${myEntry.rank - 1}'
-                                            : 'Top of your League!',
-                                        style: AppTextStyles.metadata(
-                                          color: ptsToOvertake > 0
-                                              ? AppColors.secondaryAccent
-                                              : AppColors.warning,
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                ),
-                                Text(
-                                  '${myEntry.score} pts',
-                                  style: AppTextStyles.cardTitle(color: AppColors.accent),
-                                ),
+                                const Icon(Icons.workspace_premium_rounded,
+                                    color: AppColors.warning, size: 14),
+                                const SizedBox(width: 4),
+                                Text('GOLD LEAGUE',
+                                    style: AppTextStyles.metadata(color: AppColors.warning)),
                               ],
                             ),
                           ),
-                        ),
-
-                        const SizedBox(height: 8),
-
-                        // Full League Rankings List
-                        Expanded(
-                          child: ListView.builder(
-                            physics: const BouncingScrollPhysics(),
-                            padding: const EdgeInsets.fromLTRB(20, 4, 20, 20),
-                            itemCount: allEntries.length,
-                            itemBuilder: (_, i) {
-                              final entry = allEntries[i];
-                              return _LeaderboardRow(entry: entry, index: i);
-                            },
-                          ),
-                        ),
-                      ],
-                    );
-                  },
+                        ],
+                      ),
+                      const SizedBox(height: 4),
+                      Text('Global Explorers', style: AppTextStyles.screenTitle()),
+                    ],
+                  ).animate().fadeIn(duration: 400.ms),
                 ),
-              ),
-            ],
+
+                const SizedBox(height: 14),
+
+                // ── Period Selector Tabs ──
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 20),
+                  child: SingleChildScrollView(
+                    scrollDirection: Axis.horizontal,
+                    physics: const BouncingScrollPhysics(),
+                    child: Row(
+                      children: ['daily', 'weekly', 'monthly', 'alltime'].map((p) {
+                        final isSelected = p == period;
+                        return Padding(
+                          padding: const EdgeInsets.only(right: 8),
+                          child: GestureDetector(
+                            onTap: () => ref.read(leaderboardPeriodProvider.notifier).state = p,
+                            child: AnimatedContainer(
+                              duration: 200.ms,
+                              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                              decoration: BoxDecoration(
+                                color: isSelected
+                                    ? AppColors.accent.withOpacity(0.2)
+                                    : AppColors.glass,
+                                borderRadius: BorderRadius.circular(10),
+                                border: Border.all(
+                                  color: isSelected ? AppColors.accent : AppColors.glassBorder,
+                                ),
+                              ),
+                              child: Text(
+                                p[0].toUpperCase() + p.substring(1),
+                                style: AppTextStyles.label(
+                                  color: isSelected ? AppColors.accent : AppColors.textMuted,
+                                ),
+                              ),
+                            ),
+                          ),
+                        );
+                      }).toList(),
+                    ),
+                  ),
+                ),
+
+                const SizedBox(height: 14),
+
+                // ── Entries List ──
+                Expanded(
+                  child: data.when(
+                    loading: () => ListView.builder(
+                      padding: const EdgeInsets.symmetric(horizontal: 20),
+                      itemCount: 8,
+                      itemBuilder: (_, __) => const Padding(
+                        padding: EdgeInsets.only(bottom: 8),
+                        child: SkeletonLoader(height: 60),
+                      ),
+                    ),
+                    error: (_, __) => const SizedBox(),
+                    data: (raw) {
+                      final serverEntries = (raw['entries'] as List<dynamic>?)
+                              ?.map((e) =>
+                                  LeaderboardEntryModel.fromJson(e as Map<String, dynamic>))
+                              .toList() ??
+                          [];
+
+                      final allEntries =
+                          _buildLeagueEntries(serverEntries, currentUser, period);
+
+                      final myEntry = allEntries.firstWhere(
+                        (e) => e.isCurrentUser,
+                        orElse: () => LeaderboardEntryModel(
+                          rank: 1,
+                          userId: 1,
+                          username: currentUser.name,
+                          score: currentUser.totalScore,
+                          isCurrentUser: true,
+                        ),
+                      );
+
+                      final nextRankEntry = myEntry.rank > 1
+                          ? allEntries.firstWhere((e) => e.rank == myEntry.rank - 1)
+                          : null;
+                      final ptsToOvertake = nextRankEntry != null
+                          ? (nextRankEntry.score - myEntry.score + 10)
+                          : 0;
+
+                      return Column(
+                        children: [
+                          // User position sticky highlight card
+                          Padding(
+                            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 4),
+                            child: GlassCard(
+                              backgroundColor: AppColors.accent.withOpacity(0.12),
+                              borderColor: AppColors.accent,
+                              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                              child: Row(
+                                children: [
+                                  Container(
+                                    width: 34,
+                                    height: 34,
+                                    decoration: BoxDecoration(
+                                      color: AppColors.accent.withOpacity(0.2),
+                                      shape: BoxShape.circle,
+                                    ),
+                                    child: Center(
+                                      child: Text(
+                                        '#${myEntry.rank}',
+                                        style: AppTextStyles.label(color: AppColors.accent),
+                                      ),
+                                    ),
+                                  ),
+                                  const SizedBox(width: 12),
+                                  Expanded(
+                                    child: Column(
+                                      crossAxisAlignment: CrossAxisAlignment.start,
+                                      children: [
+                                        Text(
+                                          '${myEntry.username} (You)',
+                                          style: AppTextStyles.bodyMedium(),
+                                        ),
+                                        Text(
+                                          ptsToOvertake > 0
+                                              ? '$ptsToOvertake pts to reach #${myEntry.rank - 1}'
+                                              : 'Top of your League!',
+                                          style: AppTextStyles.metadata(
+                                            color: ptsToOvertake > 0
+                                              ? AppColors.secondaryAccent
+                                              : AppColors.warning,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                  Text(
+                                    '${myEntry.score} pts',
+                                    style: AppTextStyles.cardTitle(color: AppColors.accent),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ),
+
+                          const SizedBox(height: 8),
+
+                          // Full League Rankings List
+                          Expanded(
+                            child: ListView.builder(
+                              physics: const BouncingScrollPhysics(),
+                              padding: const EdgeInsets.fromLTRB(20, 4, 20, 20),
+                              itemCount: allEntries.length,
+                              itemBuilder: (_, i) {
+                                final entry = allEntries[i];
+                                return _LeaderboardRow(entry: entry, index: i);
+                              },
+                            ),
+                          ),
+                        ],
+                      );
+                    },
+                  ),
+                ),
+              ],
+            ),
           ),
         ),
       ),
