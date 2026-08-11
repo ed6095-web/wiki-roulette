@@ -9,11 +9,19 @@ import '../../home/providers/home_provider.dart';
 class DiscoverScreen extends ConsumerWidget {
   const DiscoverScreen({super.key});
 
-  static const _topCategories = [
-    ('📜', 'History'), ('🌌', 'Space'), ('🧪', 'Science'),
-    ('🌍', 'Geography'), ('💻', 'Technology'), ('🎨', 'Art'),
-    ('🐾', 'Animals'), ('🏆', 'Sports'), ('🎵', 'Music'),
-    ('🍜', 'Food'), ('⚙️', 'Engineering'), ('🏛️', 'Architecture'),
+  static const List<(IconData, String)> _categories = [
+    (Icons.history_edu_rounded, 'History'),
+    (Icons.rocket_launch_rounded, 'Space'),
+    (Icons.biotech_rounded, 'Science'),
+    (Icons.public_rounded, 'Geography'),
+    (Icons.memory_rounded, 'Technology'),
+    (Icons.palette_rounded, 'Arts'),
+    (Icons.pets_rounded, 'Animals'),
+    (Icons.sports_volleyball_rounded, 'Sports'),
+    (Icons.music_note_rounded, 'Music'),
+    (Icons.restaurant_rounded, 'Cuisine'),
+    (Icons.apartment_rounded, 'Architecture'),
+    (Icons.movie_rounded, 'Cinema'),
   ];
 
   @override
@@ -25,9 +33,10 @@ class DiscoverScreen extends ConsumerWidget {
         backgroundColor: Colors.transparent,
         body: SafeArea(
           child: CustomScrollView(
+            physics: const BouncingScrollPhysics(),
             slivers: [
               SliverPadding(
-                padding: const EdgeInsets.fromLTRB(24, 20, 24, 24),
+                padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
                 sliver: SliverList(
                   delegate: SliverChildListDelegate([
                     Row(
@@ -36,43 +45,61 @@ class DiscoverScreen extends ConsumerWidget {
                         Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            Text('DISCOVER',
-                                style: AppTextStyles.overline(
-                                    color: AppColors.secondaryAccent)),
-                            Text('Explore by Topic', style: AppTextStyles.screenTitle()),
+                            Text(
+                              'DISCOVER',
+                              style: AppTextStyles.overline(color: AppColors.secondaryAccent),
+                            ),
+                            const SizedBox(height: 2),
+                            Text('Explore Topics', style: AppTextStyles.screenTitle()),
                           ],
                         ),
                         IconButton(
-                          icon: const Icon(Icons.search_rounded,
-                              color: AppColors.textSecondary, size: 28),
+                          icon: const Icon(
+                            Icons.search_rounded,
+                            color: AppColors.textSecondary,
+                            size: 26,
+                          ),
                           onPressed: () => context.push('/search'),
                         ),
                       ],
                     ),
 
-                    const SizedBox(height: 32),
+                    const SizedBox(height: 24),
 
-                    // ── Random discovery CTA ──
+                    // ── Random Surprise Card ──
                     GlassCard(
                       onTap: () {
                         ref.read(rouletteProvider.notifier).spin();
                         context.go('/home');
                       },
                       borderColor: AppColors.accent.withOpacity(0.4),
-                      backgroundColor: AppColors.accent.withOpacity(0.05),
+                      backgroundColor: AppColors.accent.withOpacity(0.06),
                       child: Row(
                         children: [
-                          const Text('🎲', style: TextStyle(fontSize: 32)),
-                          const SizedBox(width: 16),
+                          Container(
+                            padding: const EdgeInsets.all(12),
+                            decoration: BoxDecoration(
+                              color: AppColors.accent.withOpacity(0.2),
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                            child: const Icon(
+                              Icons.casino_rounded,
+                              color: AppColors.accent,
+                              size: 26,
+                            ),
+                          ),
+                          const SizedBox(width: 14),
                           Expanded(
                             child: Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
                                 Text('SURPRISE ME',
-                                    style: AppTextStyles.overline(
-                                        color: AppColors.accent)),
-                                Text('Get a completely random Wikipedia article',
-                                    style: AppTextStyles.body()),
+                                    style: AppTextStyles.overline(color: AppColors.accent)),
+                                const SizedBox(height: 2),
+                                Text(
+                                  'Explore a completely random article',
+                                  style: AppTextStyles.body(color: AppColors.textSecondary),
+                                ),
                               ],
                             ),
                           ),
@@ -82,40 +109,47 @@ class DiscoverScreen extends ConsumerWidget {
                       ),
                     ),
 
-                    const SizedBox(height: 32),
+                    const SizedBox(height: 28),
 
-                    Text('BROWSE CATEGORIES',
+                    Text('BROWSE BY CATEGORY',
                         style: AppTextStyles.overline(color: AppColors.accent)),
-                    const SizedBox(height: 16),
+                    const SizedBox(height: 14),
 
-                    // ── Category grid ──
-                    GridView.count(
+                    // ── Category Grid ──
+                    GridView.builder(
                       shrinkWrap: true,
                       physics: const NeverScrollableScrollPhysics(),
-                      crossAxisCount: 3,
-                      mainAxisSpacing: 12,
-                      crossAxisSpacing: 12,
-                      childAspectRatio: 1.1,
-                      children: _topCategories.map((cat) {
+                      gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                        crossAxisCount: 3,
+                        mainAxisSpacing: 10,
+                        crossAxisSpacing: 10,
+                        childAspectRatio: 1.05,
+                      ),
+                      itemCount: _categories.length,
+                      itemBuilder: (context, index) {
+                        final cat = _categories[index];
                         return GlassCard(
-                          padding: const EdgeInsets.all(12),
-                          onTap: () {}, // TODO category filter
+                          padding: const EdgeInsets.all(10),
+                          onTap: () => context.push('/search'),
                           child: Column(
                             mainAxisAlignment: MainAxisAlignment.center,
                             children: [
-                              Text(cat.$1, style: const TextStyle(fontSize: 28)),
+                              Icon(cat.$1, size: 28, color: AppColors.secondaryAccent),
                               const SizedBox(height: 6),
-                              Text(cat.$2,
-                                  style: AppTextStyles.metadata(
-                                      color: AppColors.textSecondary),
-                                  textAlign: TextAlign.center),
+                              Text(
+                                cat.$2,
+                                style: AppTextStyles.metadata(color: AppColors.textPrimary),
+                                textAlign: TextAlign.center,
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                              ),
                             ],
                           ),
                         );
-                      }).toList(),
+                      },
                     ),
 
-                    const SizedBox(height: 40),
+                    const SizedBox(height: 30),
                   ]),
                 ),
               ),

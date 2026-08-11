@@ -13,27 +13,29 @@ class ArticleReadScreen extends ConsumerWidget {
   final ArticleModel article;
   const ArticleReadScreen({super.key, required this.article});
 
-  List<Map<String, String>> _extractKeyFacts(ArticleModel article) {
-    final facts = <Map<String, String>>[];
+  List<(IconData, String)> _extractKeyFacts(ArticleModel article) {
+    final facts = <(IconData, String)>[];
     final extract = article.extract ?? '';
 
     // Extract years
     final yearMatches = RegExp(r'\b(1[0-9]{3}|20[0-9]{2})\b').allMatches(extract);
     for (final m in yearMatches.take(1)) {
-      facts.add({'icon': '📅', 'text': m.group(0)!});
+      facts.add((Icons.calendar_today_rounded, 'Key Year: ${m.group(0)!}'));
     }
 
     // Extract numeric quantities
-    final numMatches = RegExp(r'\b(\d{2,}(?:,\d{3})*)\s*(people|deaths?|km|miles?)\b',
-        caseSensitive: false).allMatches(extract);
+    final numMatches = RegExp(
+      r'\b(\d{2,}(?:,\d{3})*)\s*(people|deaths?|km|miles?|metres?|feet)\b',
+      caseSensitive: false,
+    ).allMatches(extract);
     for (final m in numMatches.take(2)) {
-      facts.add({'icon': '📊', 'text': '${m.group(1)!} ${m.group(2)!}'});
+      facts.add((Icons.insights_rounded, '${m.group(1)!} ${m.group(2)!}'));
     }
 
-    // Add difficulty as a fact
-    facts.add({'icon': '⚡', 'text': 'Difficulty: ${article.difficultyLabel}'});
+    // Add reading level
+    facts.add((Icons.bolt_rounded, 'Difficulty Level: ${article.difficultyLabel}'));
 
-    return facts.take(4).toList();
+    return facts.take(3).toList();
   }
 
   @override
@@ -44,10 +46,11 @@ class ArticleReadScreen extends ConsumerWidget {
       child: Scaffold(
         backgroundColor: Colors.transparent,
         body: CustomScrollView(
+          physics: const BouncingScrollPhysics(),
           slivers: [
-            // ── App bar with hero image ──
+            // ── App Bar with Hero Image ──
             SliverAppBar(
-              expandedHeight: 240,
+              expandedHeight: 220,
               pinned: true,
               backgroundColor: AppColors.background,
               leading: IconButton(
@@ -56,7 +59,7 @@ class ArticleReadScreen extends ConsumerWidget {
               ),
               actions: [
                 IconButton(
-                  icon: const Icon(Icons.open_in_browser_outlined),
+                  icon: const Icon(Icons.open_in_browser_rounded),
                   tooltip: 'View on Wikipedia',
                   onPressed: () async {
                     final uri = Uri.parse(article.url);
@@ -74,108 +77,118 @@ class ArticleReadScreen extends ConsumerWidget {
                       )
                     : Container(
                         decoration: const BoxDecoration(
-                          gradient: LinearGradient(
-                            colors: AppColors.cardGradient,
-                          ),
+                          gradient: LinearGradient(colors: AppColors.cardGradient),
                         ),
                         child: const Center(
-                          child: Text('🌐', style: TextStyle(fontSize: 60)),
+                          child: Icon(Icons.public_rounded, size: 54, color: AppColors.textMuted),
                         ),
                       ),
               ),
             ),
 
-            // ── Content ──
+            // ── Article Content ──
             SliverPadding(
-              padding: const EdgeInsets.all(24),
+              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 20),
               sliver: SliverList(
                 delegate: SliverChildListDelegate([
                   // Title
                   Text(article.title, style: AppTextStyles.screenTitle())
-                      .animate().fadeIn(duration: 400.ms),
-                  if (article.description != null) ...[
+                      .animate()
+                      .fadeIn(duration: 400.ms),
+
+                  if (article.description != null && article.description!.isNotEmpty) ...[
                     const SizedBox(height: 8),
-                    Text(article.description!,
-                        style: AppTextStyles.body(color: AppColors.textMuted))
-                        .animate().fadeIn(delay: 100.ms),
+                    Text(
+                      article.description!,
+                      style: AppTextStyles.body(color: AppColors.textMuted),
+                    ).animate().fadeIn(delay: 100.ms),
                   ],
 
-                  // Categories
+                  // Category Chips
                   if (article.categories.isNotEmpty) ...[
-                    const SizedBox(height: 16),
+                    const SizedBox(height: 14),
                     Wrap(
                       spacing: 8,
-                      children: article.categories.map((c) => Chip(
-                        label: Text('${c.icon ?? ''} ${c.name}',
-                            style: AppTextStyles.metadata(color: AppColors.textSecondary)),
-                        backgroundColor: AppColors.glass,
-                        side: const BorderSide(color: AppColors.glassBorder),
-                      )).toList(),
+                      runSpacing: 8,
+                      children: article.categories.map((c) {
+                        return Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                          decoration: BoxDecoration(
+                            color: AppColors.glass,
+                            borderRadius: BorderRadius.circular(8),
+                            border: Border.all(color: AppColors.glassBorder),
+                          ),
+                          child: Text(
+                            c.name,
+                            style: AppTextStyles.metadata(color: AppColors.textSecondary),
+                          ),
+                        );
+                      }).toList(),
                     ).animate().fadeIn(delay: 200.ms),
                   ],
 
-                  const SizedBox(height: 28),
-                  const Divider(color: AppColors.glassBorder),
                   const SizedBox(height: 20),
+                  const Divider(color: AppColors.glassBorder),
+                  const SizedBox(height: 16),
 
-                  // ── Key Facts ──
+                  // ── Key Facts Panel ──
                   if (facts.isNotEmpty) ...[
-                    Text('KEY FACTS',
+                    Text('KEY HIGHLIGHTS',
                         style: AppTextStyles.overline(color: AppColors.accent)),
-                    const SizedBox(height: 16),
+                    const SizedBox(height: 12),
                     GlassCard(
+                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
                       child: Column(
-                        children: facts.asMap().entries.map((entry) {
+                        children: facts.map((fact) {
                           return Padding(
-                            padding: const EdgeInsets.symmetric(vertical: 8),
+                            padding: const EdgeInsets.symmetric(vertical: 6),
                             child: Row(
                               children: [
-                                Text(entry.value['icon']!,
-                                    style: const TextStyle(fontSize: 20)),
-                                const SizedBox(width: 16),
+                                Icon(fact.$1, size: 18, color: AppColors.accent),
+                                const SizedBox(width: 12),
                                 Expanded(
-                                  child: Text(entry.value['text']!,
-                                      style: AppTextStyles.bodyMedium()),
+                                  child: Text(fact.$2, style: AppTextStyles.bodyMedium()),
                                 ),
                               ],
                             ),
                           );
                         }).toList(),
                       ),
-                    ).animate().fadeIn(delay: 300.ms),
-                    const SizedBox(height: 24),
+                    ).animate().fadeIn(delay: 250.ms),
+                    const SizedBox(height: 20),
                   ],
 
-                  // ── Summary text ──
-                  Text('ABOUT',
-                      style: AppTextStyles.overline(color: AppColors.accent)),
-                  const SizedBox(height: 12),
-                  Text(article.shortExtract ?? article.extract ?? '',
-                      style: AppTextStyles.body())
-                      .animate().fadeIn(delay: 400.ms),
+                  // ── Article Summary ──
+                  Text('OVERVIEW', style: AppTextStyles.overline(color: AppColors.accent)),
+                  const SizedBox(height: 10),
+                  Text(
+                    article.shortExtract ?? article.extract ?? 'No content available.',
+                    style: AppTextStyles.body(),
+                  ).animate().fadeIn(delay: 300.ms),
 
                   const SizedBox(height: 16),
+
                   // Attribution
                   Row(
                     children: [
-                      const Text('📖', style: TextStyle(fontSize: 14)),
-                      const SizedBox(width: 8),
+                      const Icon(Icons.info_outline_rounded, size: 14, color: AppColors.textMuted),
+                      const SizedBox(width: 6),
                       Expanded(
                         child: Text(
-                          'Content from Wikipedia, the free encyclopedia. CC BY-SA 4.0',
+                          'Content licensed under CC BY-SA 4.0 from Wikipedia.',
                           style: AppTextStyles.metadata(),
                         ),
                       ),
                     ],
                   ),
 
-                  const SizedBox(height: 40),
+                  const SizedBox(height: 36),
 
-                  // ── Start Challenge CTA ──
+                  // ── Start Quiz CTA ──
                   if (article.quizAvailable)
                     SizedBox(
                       width: double.infinity,
-                      height: 60,
+                      height: 56,
                       child: ElevatedButton(
                         onPressed: () {
                           context.push('/quiz', extra: article);
@@ -183,35 +196,30 @@ class ArticleReadScreen extends ConsumerWidget {
                         style: ElevatedButton.styleFrom(
                           backgroundColor: AppColors.accent,
                           shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(16)),
+                            borderRadius: BorderRadius.circular(16),
+                          ),
                         ),
                         child: Row(
                           mainAxisAlignment: MainAxisAlignment.center,
                           children: [
-                            const Text('🧠', style: TextStyle(fontSize: 20)),
-                            const SizedBox(width: 12),
-                            const Text('START CHALLENGE',
-                                style: TextStyle(
-                                  fontFamily: 'Poppins',
-                                  fontWeight: FontWeight.w600,
-                                  fontSize: 16,
-                                  letterSpacing: 1,
-                                )),
+                            const Icon(Icons.quiz_rounded, color: Colors.white, size: 20),
+                            const SizedBox(width: 10),
+                            Text('START KNOWLEDGE CHALLENGE', style: AppTextStyles.button()),
                           ],
                         ),
                       ),
-                    ).animate().fadeIn(delay: 500.ms).slideY(begin: 0.15, delay: 500.ms)
+                    ).animate().fadeIn(delay: 400.ms).slideY(begin: 0.15)
                   else
                     GlassCard(
                       child: Center(
                         child: Text(
-                          'No quiz available for this article yet',
+                          'No quiz available for this article',
                           style: AppTextStyles.body(color: AppColors.textMuted),
                         ),
                       ),
                     ),
 
-                  const SizedBox(height: 40),
+                  const SizedBox(height: 30),
                 ]),
               ),
             ),

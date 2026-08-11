@@ -16,43 +16,31 @@ class ArticleRevealScreen extends StatefulWidget {
   State<ArticleRevealScreen> createState() => _ArticleRevealScreenState();
 }
 
-class _ArticleRevealScreenState extends State<ArticleRevealScreen>
-    with SingleTickerProviderStateMixin {
-  late AnimationController _entranceCtrl;
-
+class _ArticleRevealScreenState extends State<ArticleRevealScreen> {
   @override
   void initState() {
     super.initState();
-    _entranceCtrl = AnimationController(
-      vsync: this,
-      duration: 800.ms,
-    )..forward();
     HapticFeedback.lightImpact();
   }
 
-  @override
-  void dispose() {
-    _entranceCtrl.dispose();
-    super.dispose();
-  }
-
-  String _interestingRating(ArticleModel a) {
-    // Heuristic based on description length + word count
+  int _interestScore(ArticleModel a) {
     final score = (a.wordCount ?? 100) + (a.description?.length ?? 0);
-    if (score > 400) return '🔥🔥🔥🔥🔥';
-    if (score > 250) return '🔥🔥🔥🔥';
-    if (score > 150) return '🔥🔥🔥';
-    return '🔥🔥';
+    if (score > 400) return 5;
+    if (score > 250) return 4;
+    if (score > 150) return 3;
+    return 2;
   }
 
   @override
   Widget build(BuildContext context) {
     final article = widget.article;
+    final stars = _interestScore(article);
+
     return Scaffold(
       backgroundColor: AppColors.background,
       body: Stack(
         children: [
-          // ── Hero blurred background image ──
+          // ── Hero image backdrop ──
           if (article.thumbnailUrl != null)
             Positioned.fill(
               child: ShaderMask(
@@ -60,10 +48,10 @@ class _ArticleRevealScreenState extends State<ArticleRevealScreen>
                   begin: Alignment.topCenter,
                   end: Alignment.bottomCenter,
                   colors: [
-                    Colors.black.withOpacity(0.3),
+                    Colors.black.withOpacity(0.4),
                     AppColors.background,
                   ],
-                  stops: const [0.0, 0.55],
+                  stops: const [0.0, 0.65],
                 ).createShader(rect),
                 blendMode: BlendMode.darken,
                 child: CachedNetworkImage(
@@ -75,18 +63,18 @@ class _ArticleRevealScreenState extends State<ArticleRevealScreen>
               ),
             ),
 
-          // ── Content ──
+          // ── Scrollable Content ──
           SafeArea(
             child: Column(
               children: [
-                // Back button
+                // Top close button
                 Padding(
-                  padding: const EdgeInsets.all(16),
+                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
                   child: Align(
                     alignment: Alignment.centerLeft,
                     child: IconButton(
                       onPressed: () => context.pop(),
-                      icon: const Icon(Icons.close, color: AppColors.textSecondary),
+                      icon: const Icon(Icons.close_rounded, color: AppColors.textSecondary),
                       style: IconButton.styleFrom(
                         backgroundColor: AppColors.glass,
                         side: const BorderSide(color: AppColors.glassBorder),
@@ -97,89 +85,113 @@ class _ArticleRevealScreenState extends State<ArticleRevealScreen>
 
                 Expanded(
                   child: SingleChildScrollView(
-                    padding: const EdgeInsets.symmetric(horizontal: 24),
+                    physics: const BouncingScrollPhysics(),
+                    padding: const EdgeInsets.symmetric(horizontal: 20),
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        const SizedBox(height: 20),
+                        const SizedBox(height: 10),
 
-                        // "DISCOVERED" label
-                        Text('DISCOVERED',
-                            style: AppTextStyles.overline(color: AppColors.accent))
-                            .animate().fadeIn(duration: 500.ms),
+                        // Overline Badge
+                        Row(
+                          children: [
+                            const Icon(
+                              Icons.explore_rounded,
+                              color: AppColors.accent,
+                              size: 16,
+                            ),
+                            const SizedBox(width: 6),
+                            Text(
+                              'ARTICLE DISCOVERED',
+                              style: AppTextStyles.overline(color: AppColors.accent),
+                            ),
+                          ],
+                        ).animate().fadeIn(duration: 400.ms),
 
                         const SizedBox(height: 12),
 
                         // Title
-                        Text(article.title,
-                            style: AppTextStyles.hero())
-                            .animate().fadeIn(delay: 150.ms, duration: 500.ms)
-                            .slideY(begin: 0.2, delay: 150.ms),
+                        Text(
+                          article.title,
+                          style: AppTextStyles.screenTitle(),
+                        ).animate().fadeIn(delay: 100.ms, duration: 500.ms).slideY(begin: 0.1),
 
-                        const SizedBox(height: 12),
+                        if (article.description != null && article.description!.isNotEmpty) ...[
+                          const SizedBox(height: 10),
+                          Text(
+                            article.description!,
+                            style: AppTextStyles.body(color: AppColors.textSecondary),
+                          ).animate().fadeIn(delay: 200.ms),
+                        ],
 
-                        // Description
-                        if (article.description != null)
-                          Text(article.description!,
-                              style: AppTextStyles.body(color: AppColors.textSecondary))
-                              .animate().fadeIn(delay: 250.ms, duration: 400.ms),
+                        const SizedBox(height: 20),
 
-                        const SizedBox(height: 24),
-
-                        // ── Hero image ──
+                        // Hero image card
                         if (article.thumbnailUrl != null)
                           ClipRRect(
-                            borderRadius: BorderRadius.circular(20),
+                            borderRadius: BorderRadius.circular(16),
                             child: CachedNetworkImage(
                               imageUrl: article.thumbnailUrl!,
-                              height: 220,
+                              height: 200,
                               width: double.infinity,
                               fit: BoxFit.cover,
                             ),
-                          ).animate().fadeIn(delay: 300.ms).scale(
-                                begin: const Offset(0.95, 0.95),
-                                delay: 300.ms,
-                              ),
+                          ).animate().fadeIn(delay: 300.ms),
 
-                        const SizedBox(height: 24),
+                        const SizedBox(height: 20),
 
-                        // ── Meta cards ──
+                        // ── Metadata Badges Row (Flexible & Overflow Proof) ──
                         Row(
                           children: [
                             Expanded(
                               child: GlassCard(
-                                padding: const EdgeInsets.all(16),
+                                padding: const EdgeInsets.all(14),
                                 child: Column(
                                   crossAxisAlignment: CrossAxisAlignment.start,
                                   children: [
-                                    Text('INTERESTING RATING',
-                                        style: AppTextStyles.overline(
-                                            color: AppColors.textMuted)),
+                                    Text(
+                                      'DEPTH SCORE',
+                                      style: AppTextStyles.overline(color: AppColors.textMuted),
+                                    ),
                                     const SizedBox(height: 6),
-                                    Text(_interestingRating(article),
-                                        style: const TextStyle(fontSize: 18)),
+                                    Row(
+                                      children: List.generate(
+                                        5,
+                                        (i) => Icon(
+                                          Icons.star_rounded,
+                                          size: 16,
+                                          color: i < stars ? AppColors.warning : AppColors.textDisabled,
+                                        ),
+                                      ),
+                                    ),
                                   ],
                                 ),
                               ),
                             ),
-                            const SizedBox(width: 12),
+                            const SizedBox(width: 10),
                             Expanded(
                               child: GlassCard(
-                                padding: const EdgeInsets.all(16),
+                                padding: const EdgeInsets.all(14),
                                 child: Column(
                                   crossAxisAlignment: CrossAxisAlignment.start,
                                   children: [
-                                    Text('DIFFICULTY',
-                                        style: AppTextStyles.overline(
-                                            color: AppColors.textMuted)),
+                                    Text(
+                                      'DIFFICULTY',
+                                      style: AppTextStyles.overline(color: AppColors.textMuted),
+                                    ),
                                     const SizedBox(height: 6),
                                     Row(
                                       children: [
-                                        Text(article.difficultyEmoji,
-                                            style: const TextStyle(fontSize: 16)),
-                                        const SizedBox(width: 6),
-                                        Text(article.difficultyLabel,
-                                            style: AppTextStyles.bodyMedium()),
+                                        const Icon(
+                                          Icons.bolt_rounded,
+                                          size: 16,
+                                          color: AppColors.secondaryAccent,
+                                        ),
+                                        const SizedBox(width: 4),
+                                        Text(
+                                          article.difficultyLabel,
+                                          style: AppTextStyles.bodyMedium(),
+                                        ),
                                       ],
                                     ),
                                   ],
@@ -187,34 +199,34 @@ class _ArticleRevealScreenState extends State<ArticleRevealScreen>
                               ),
                             ),
                           ],
-                        ).animate().fadeIn(delay: 400.ms),
+                        ).animate().fadeIn(delay: 350.ms),
 
-                        const SizedBox(height: 32),
+                        const SizedBox(height: 28),
 
-                        // ── Action buttons ──
+                        // Action button
                         SizedBox(
                           width: double.infinity,
-                          height: 56,
+                          height: 54,
                           child: ElevatedButton(
                             onPressed: () {
                               context.push('/article/read', extra: article);
                             },
                             child: const Text('READ ARTICLE'),
                           ),
-                        ).animate().fadeIn(delay: 500.ms).slideY(begin: 0.2, delay: 500.ms),
+                        ).animate().fadeIn(delay: 450.ms).slideY(begin: 0.15),
 
-                        const SizedBox(height: 12),
+                        const SizedBox(height: 10),
 
                         SizedBox(
                           width: double.infinity,
-                          height: 48,
+                          height: 44,
                           child: TextButton(
                             onPressed: () => context.pop(),
-                            child: const Text('SKIP →'),
+                            child: const Text('DISCOVER ANOTHER →'),
                           ),
-                        ).animate().fadeIn(delay: 600.ms),
+                        ).animate().fadeIn(delay: 500.ms),
 
-                        const SizedBox(height: 40),
+                        const SizedBox(height: 30),
                       ],
                     ),
                   ),

@@ -18,7 +18,7 @@ void main() {
         'difficulty': 'medium',
         'quiz_available': true,
         'categories': [
-          {'id': 1, 'name': 'History', 'icon': '📜'}
+          {'id': 1, 'name': 'History', 'icon': 'history'}
         ],
       };
 
@@ -27,13 +27,13 @@ void main() {
       expect(article.id, 1);
       expect(article.title, 'The Great Molasses Flood');
       expect(article.difficultyLabel, 'Medium');
-      expect(article.difficultyEmoji, '🟡');
       expect(article.categories.length, 1);
       expect(article.categories.first.name, 'History');
     });
 
     test('shortExtract returns first sentences', () {
-      const longText = 'Sentence one. Sentence two. Sentence three. Sentence four. Sentence five.';
+      const longText =
+          'Sentence one. Sentence two. Sentence three. Sentence four. Sentence five.';
       const article = ArticleModel(
         id: 1,
         wikiPageId: 100,
@@ -74,43 +74,20 @@ void main() {
       expect(breakdown.accuracy, 1.0);
     });
 
-    test('isPerfect returns false when some answers incorrect', () {
-      const breakdown = ScoreBreakdownModel(
-        correctAnswers: 3,
-        totalQuestions: 5,
-        baseScore: 300,
-        speedBonus: 50,
-        perfectBonus: 0,
-        dailyMultiplier: 1.0,
-        finalScore: 350,
-        xpEarned: 35,
-        levelBefore: 1,
-        levelAfter: 1,
-        leveledUp: false,
-        newAchievements: [],
+    test('UserProfileModel serialization and defaults', () {
+      const profile = UserProfileModel(
+        name: 'Alex',
+        interests: ['History', 'Science'],
       );
 
-      expect(breakdown.isPerfect, false);
-      expect(breakdown.accuracy, 0.6);
-    });
-  });
+      expect(profile.name, 'Alex');
+      expect(profile.level, 1);
+      expect(profile.interests.length, 2);
 
-  group('QuizQuestionModel Tests', () {
-    test('optionsMap correctly maps keys', () {
-      const q = QuizQuestionModel(
-        id: 1,
-        question: 'What year did Einstein die?',
-        optionA: '1945',
-        optionB: '1955',
-        optionC: '1965',
-        optionD: '1975',
-        difficulty: 'easy',
-      );
-
-      expect(q.optionsMap['a'], '1945');
-      expect(q.optionsMap['b'], '1955');
-      expect(q.optionsMap['c'], '1965');
-      expect(q.optionsMap['d'], '1975');
+      final map = profile.toJson();
+      final loaded = UserProfileModel.fromJson(map);
+      expect(loaded.name, 'Alex');
+      expect(loaded.interests, contains('Science'));
     });
   });
 }

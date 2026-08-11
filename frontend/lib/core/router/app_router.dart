@@ -2,8 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../features/auth/providers/auth_provider.dart';
-import '../../features/auth/screens/login_screen.dart';
-import '../../features/auth/screens/register_screen.dart';
+import '../../features/auth/screens/onboarding_screen.dart';
 import '../../features/home/screens/home_screen.dart';
 import '../../features/article/screens/article_reveal_screen.dart';
 import '../../features/article/screens/article_read_screen.dart';
@@ -22,33 +21,26 @@ final _rootKey = GlobalKey<NavigatorState>();
 final _shellKey = GlobalKey<NavigatorState>();
 
 final routerProvider = Provider<GoRouter>((ref) {
-  final authState = ref.watch(authProvider);
+  final profileState = ref.watch(profileProvider);
 
   return GoRouter(
     navigatorKey: _rootKey,
     initialLocation: '/home',
     redirect: (context, state) {
-      final isAuthed = authState.isAuthenticated;
-      final isLoading = authState.isLoading && authState.user == null;
+      if (profileState.isLoading) return null;
 
-      if (isLoading) return null;
+      final isOnboarded = profileState.isOnboarded;
+      final onOnboardingPage = state.matchedLocation == '/onboarding';
 
-      final onAuthPage = state.matchedLocation.startsWith('/login') ||
-          state.matchedLocation.startsWith('/register');
-
-      if (!isAuthed && !onAuthPage) return '/login';
-      if (isAuthed && onAuthPage) return '/home';
+      if (!isOnboarded && !onOnboardingPage) return '/onboarding';
+      if (isOnboarded && onOnboardingPage) return '/home';
       return null;
     },
     routes: [
-      // Auth routes (no shell)
+      // First-time lightweight onboarding
       GoRoute(
-        path: '/login',
-        builder: (_, __) => const LoginScreen(),
-      ),
-      GoRoute(
-        path: '/register',
-        builder: (_, __) => const RegisterScreen(),
+        path: '/onboarding',
+        builder: (_, __) => const OnboardingScreen(),
       ),
 
       // Main app shell (bottom navigation)
@@ -63,7 +55,7 @@ final routerProvider = Provider<GoRouter>((ref) {
         ],
       ),
 
-      // Full-screen routes (no bottom nav)
+      // Full-screen routes
       GoRoute(
         path: '/article/reveal',
         builder: (context, state) {

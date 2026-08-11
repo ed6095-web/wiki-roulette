@@ -1,112 +1,131 @@
+import 'dart:convert';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../../../data/models/models.dart';
 import '../../../core/network/api_client.dart';
-import '../../../core/constants/app_text_styles.dart';
 
-// ──────────────────────────────────────────────────────
-// AUTH STATE
-// ──────────────────────────────────────────────────────
+const String _profileKey = 'user_profile_data';
+const String _onboardedKey = 'user_is_onboarded';
 
-class AuthState {
-  final bool isAuthenticated;
-  final UserModel? user;
+class ProfileState {
+  final bool isOnboarded;
+  final UserProfileModel profile;
   final bool isLoading;
-  final String? error;
 
-  const AuthState({
-    this.isAuthenticated = false,
-    this.user,
-    this.isLoading = false,
-    this.error,
+  const ProfileState({
+    this.isOnboarded = false,
+    this.profile = const UserProfileModel(name: 'Explorer'),
+    this.isLoading = true,
   });
 
-  AuthState copyWith({
-    bool? isAuthenticated,
-    UserModel? user,
+  ProfileState copyWith({
+    bool? isOnboarded,
+    UserProfileModel? profile,
     bool? isLoading,
-    String? error,
-  }) => AuthState(
-        isAuthenticated: isAuthenticated ?? this.isAuthenticated,
-        user: user ?? this.user,
+  }) =>
+      ProfileState(
+        isOnboarded: isOnboarded ?? this.isOnboarded,
+        profile: profile ?? this.profile,
         isLoading: isLoading ?? this.isLoading,
-        error: error,
       );
 }
 
-class AuthNotifier extends StateNotifier<AuthState> {
-  AuthNotifier() : super(const AuthState()) {
-    _loadFromCache();
+class ProfileNotifier extends StateNotifier<ProfileState> {
+  ProfileNotifier() : super(const ProfileState()) {
+    _loadProfile();
   }
 
-  Future<void> _loadFromCache() async {
+  Future<void> _loadProfile() async {
     final prefs = await SharedPreferences.getInstance();
-    final token = prefs.getString(AppConstants.authTokenKey);
-    if (token != null) {
+    final isOnboarded = prefs.getBool(_onboardedKey) ?? false;
+    final jsonStr = prefs.getString(_profileKey);
+
+    if (jsonStr != null) {
       try {
-        final data = await ApiClient.instance.getMe();
-        state = AuthState(
-          isAuthenticated: true,
-          user: UserModel.fromJson(data),
+        final map = jsonDecode(jsonStr) as Map<String, dynamic>;
+        state = ProfileState(
+          isOnboarded: isOnboarded,
+          profile: UserProfileModel.fromJson(map),
+          isLoading: false,
         );
+        _ensureBackendSession(state.profile.name);
+        return;
+      } catch (_) {}
+    }
+
+    state = ProfileState(
+      isOnboarded: isOnboarded,
+      profile: const UserProfileModel(name: 'Explorer'),
+      isLoading: false,
+    );
+  }
+
+  Future<void> setProfile({required String name, required List<String> interests}) async {
+    final updated = state.profile.copyWith(
+      name: name.trim().isEmpty ? 'Explorer' : name.trim(),
+      interests: interests,
+    );
+
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool(_onboardedKey, true);
+    await prefs.setString(_profileKey, jsonEncode(updated.toJson()));
+
+    state = ProfileState(
+      isOnboarded: true,
+      profile: updated,
+      isLoading: false,
+    );
+
+    _ensureBackendSession(updated.name);
+  }
+
+  Future<void> updateStats({
+    int xpEarned = 0,
+    int scoreEarned = 0,
+    bool isPerfect = false,
+    int newStreak = 0,
+  }) async {
+    final current = state.profile;
+    final newXp = current.xp + xpEarned;
+    final newLevel = _calculateLevel(newXp);
+
+    final updated = current.copyWith(
+      xp: newXp,
+      level: newLevel,
+      totalGames: current.totalGames + 1,
+      totalScore: current.totalScore + scoreEarned,
+      perfectQuizzes: current.perfectQuizzes + (isPerfect ? 1 : 0),
+      articlesRead: current.articlesRead + 1,
+      currentStreak: newStreak > 0 ? newStreak : current.currentStreak,
+      longestStreak: newStreak > current.longestStreak ? newStreak : current.longestStreak,
+    );
+
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString(_profileKey, jsonEncode(updated.toJson()));
+    state = state.copyWith(profile: updated);
+  }
+
+  int _calculateLevel(int totalXp) {
+    if (totalXp <= 0) return 1;
+    int lvl = 1;
+    while ((300 * (lvl * 1.5)).toInt() <= totalXp) {
+      lvl++;
+    }
+    return lvl;
+  }
+
+  Future<void> _ensureBackendSession(String username) async {
+    try {
+      final email = '${username.toLowerCase().replaceAll(RegExp(r'[^a-z0-9]'), '')}@guest.wikiroulette.app';
+      try {
+        await ApiClient.instance.login(email, 'GuestPassword123!');
       } catch (_) {
-        await _clearCache();
+        await ApiClient.instance.register(username, email, 'GuestPassword123!');
       }
-    }
-  }
-
-  Future<void> register(String username, String email, String password) async {
-    state = state.copyWith(isLoading: true, error: null);
-    try {
-      final data = await ApiClient.instance.register(username, email, password);
-      await _saveToken(data['access_token'] as String, data['user_id'] as int, data['username'] as String);
-      final userData = await ApiClient.instance.getMe();
-      state = AuthState(isAuthenticated: true, user: UserModel.fromJson(userData));
-    } catch (e) {
-      state = state.copyWith(isLoading: false, error: e.toString());
-    }
-  }
-
-  Future<void> login(String email, String password) async {
-    state = state.copyWith(isLoading: true, error: null);
-    try {
-      final data = await ApiClient.instance.login(email, password);
-      await _saveToken(data['access_token'] as String, data['user_id'] as int, data['username'] as String);
-      final userData = await ApiClient.instance.getMe();
-      state = AuthState(isAuthenticated: true, user: UserModel.fromJson(userData));
-    } catch (e) {
-      state = state.copyWith(isLoading: false, error: e.toString());
-    }
-  }
-
-  Future<void> logout() async {
-    await _clearCache();
-    state = const AuthState();
-  }
-
-  Future<void> refreshUser() async {
-    if (!state.isAuthenticated) return;
-    try {
-      final data = await ApiClient.instance.getMe();
-      state = state.copyWith(user: UserModel.fromJson(data));
     } catch (_) {}
-  }
-
-  Future<void> _saveToken(String token, int userId, String username) async {
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setString(AppConstants.authTokenKey, token);
-    await prefs.setInt(AppConstants.userIdKey, userId);
-    await prefs.setString(AppConstants.usernameKey, username);
-  }
-
-  Future<void> _clearCache() async {
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.remove(AppConstants.authTokenKey);
-    await prefs.remove(AppConstants.userIdKey);
-    await prefs.remove(AppConstants.usernameKey);
   }
 }
 
-final authProvider = StateNotifierProvider<AuthNotifier, AuthState>(
-  (_) => AuthNotifier(),
+final profileProvider = StateNotifierProvider<ProfileNotifier, ProfileState>(
+  (_) => ProfileNotifier(),
 );

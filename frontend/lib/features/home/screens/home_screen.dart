@@ -1,4 +1,3 @@
-import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -9,7 +8,6 @@ import '../../auth/providers/auth_provider.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../core/constants/app_text_styles.dart';
 import '../../../core/widgets/core_widgets.dart';
-import '../../../data/models/models.dart';
 
 class HomeScreen extends ConsumerStatefulWidget {
   const HomeScreen({super.key});
@@ -17,8 +15,7 @@ class HomeScreen extends ConsumerStatefulWidget {
   ConsumerState<HomeScreen> createState() => _HomeScreenState();
 }
 
-class _HomeScreenState extends ConsumerState<HomeScreen>
-    with TickerProviderStateMixin {
+class _HomeScreenState extends ConsumerState<HomeScreen> with TickerProviderStateMixin {
   late AnimationController _glowCtrl;
   late AnimationController _spinCtrl;
   bool _isAnimating = false;
@@ -48,7 +45,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
     setState(() => _isAnimating = true);
     HapticFeedback.mediumImpact();
 
-    // Start fetching article (in background)
+    // Start fetching article
     ref.read(rouletteProvider.notifier).spin();
 
     // Play spin animation
@@ -66,7 +63,6 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
 
     setState(() => _isAnimating = false);
 
-    // Navigate to reveal screen once loaded
     final state = ref.read(rouletteProvider);
     if (state.article != null && mounted) {
       context.push('/article/reveal', extra: state.article!);
@@ -88,7 +84,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
 
   @override
   Widget build(BuildContext context) {
-    final user = ref.watch(authProvider).user;
+    final user = ref.watch(profileProvider).profile;
     final roulette = ref.watch(rouletteProvider);
     final daily = ref.watch(dailyChallengeProvider);
 
@@ -97,56 +93,81 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
         backgroundColor: Colors.transparent,
         body: SafeArea(
           child: CustomScrollView(
+            physics: const BouncingScrollPhysics(),
             slivers: [
               SliverPadding(
-                padding: const EdgeInsets.fromLTRB(24, 20, 24, 0),
+                padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
                 sliver: SliverList(
                   delegate: SliverChildListDelegate([
-                    // ── Header ──
+                    // ── Header Bar ──
                     Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
                         Row(
                           children: [
-                            const Text('🎲', style: TextStyle(fontSize: 22)),
-                            const SizedBox(width: 8),
+                            Container(
+                              padding: const EdgeInsets.all(8),
+                              decoration: BoxDecoration(
+                                color: AppColors.accent.withOpacity(0.15),
+                                borderRadius: BorderRadius.circular(10),
+                                border: Border.all(color: AppColors.accent.withOpacity(0.3)),
+                              ),
+                              child: const Icon(
+                                Icons.casino_rounded,
+                                color: AppColors.accent,
+                                size: 20,
+                              ),
+                            ),
+                            const SizedBox(width: 10),
                             Text('WIKI ROULETTE',
                                 style: AppTextStyles.overline(color: AppColors.accent)),
                           ],
                         ),
+
                         // Streak badge
-                        if (user != null && user.currentStreak > 0)
-                          GlassCard(
-                            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                            borderRadius: BorderRadius.circular(20),
-                            child: Row(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                const Text('🔥', style: TextStyle(fontSize: 16)),
-                                const SizedBox(width: 4),
-                                Text('${user.currentStreak}',
-                                    style: AppTextStyles.bodyMedium(
-                                        color: AppColors.streak)),
-                              ],
-                            ),
+                        GlassCard(
+                          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                          borderRadius: BorderRadius.circular(20),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              const Icon(
+                                Icons.local_fire_department_rounded,
+                                color: AppColors.streak,
+                                size: 18,
+                              ),
+                              const SizedBox(width: 4),
+                              Text(
+                                '${user.currentStreak}',
+                                style: AppTextStyles.bodyMedium(color: AppColors.streak),
+                              ),
+                            ],
                           ),
+                        ),
                       ],
                     ).animate().fadeIn(duration: 400.ms),
 
-                    const SizedBox(height: 32),
+                    const SizedBox(height: 28),
 
                     // ── Greeting ──
                     Text('${_greeting()},',
                         style: AppTextStyles.body(color: AppColors.textMuted)),
-                    Text(user?.username ?? 'Explorer',
-                        style: AppTextStyles.screenTitle()),
+                    const SizedBox(height: 2),
+                    Text(
+                      user.name,
+                      style: AppTextStyles.screenTitle(),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
                     const SizedBox(height: 4),
-                    Text('Ready to fall down a Wikipedia rabbit hole?',
-                        style: AppTextStyles.body()),
+                    Text(
+                      'Ready to explore the unknown?',
+                      style: AppTextStyles.body(),
+                    ),
 
-                    const SizedBox(height: 48),
+                    const SizedBox(height: 36),
 
-                    // ── SPIN Button ──
+                    // ── Central SPIN Button ──
                     Center(
                       child: _SpinButton(
                         onTap: _onSpin,
@@ -155,49 +176,50 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
                       ),
                     ),
 
-                    const SizedBox(height: 12),
+                    const SizedBox(height: 14),
                     Center(
                       child: Text(
-                        'Random discovery',
+                        'Tap to discover an article',
                         style: AppTextStyles.metadata(color: AppColors.textMuted),
                       ),
                     ),
 
-                    const SizedBox(height: 40),
+                    const SizedBox(height: 36),
 
                     // ── Quick Actions ──
                     Row(
                       children: [
                         Expanded(
                           child: _QuickActionCard(
-                            icon: '📅',
-                            label: 'DAILY\nCHALLENGE',
-                            color: AppColors.warning,
-                            onTap: () {}, // TODO: navigate to daily
+                            icon: Icons.auto_stories_rounded,
+                            label: 'DISCOVER\nTOPICS',
+                            color: AppColors.secondaryAccent,
+                            onTap: () => context.go('/discover'),
                           ),
                         ),
-                        const SizedBox(width: 16),
+                        const SizedBox(width: 12),
                         Expanded(
                           child: _QuickActionCard(
-                            icon: '🔍',
-                            label: 'SEARCH\nWIKI',
-                            color: AppColors.secondaryAccent,
+                            icon: Icons.search_rounded,
+                            label: 'SEARCH\nWIKIPEDIA',
+                            color: AppColors.accent,
                             onTap: () => context.push('/search'),
                           ),
                         ),
                       ],
-                    ).animate().fadeIn(delay: 400.ms, duration: 400.ms).slideY(begin: 0.1),
+                    ).animate().fadeIn(delay: 200.ms, duration: 400.ms).slideY(begin: 0.1),
 
-                    const SizedBox(height: 24),
+                    const SizedBox(height: 20),
 
-                    // ── Daily challenge card ──
+                    // ── Daily Challenge Card ──
                     daily.when(
-                      data: (data) => data != null ? _DailyChallengeCard(data: data) : const SizedBox(),
-                      loading: () => const SkeletonLoader(height: 90),
+                      data: (data) =>
+                          data != null ? _DailyChallengeCard(data: data) : const SizedBox(),
+                      loading: () => const SkeletonLoader(height: 80),
                       error: (_, __) => const SizedBox(),
                     ),
 
-                    const SizedBox(height: 24),
+                    const SizedBox(height: 20),
                   ]),
                 ),
               ),
@@ -227,8 +249,7 @@ class _SpinButton extends StatefulWidget {
   State<_SpinButton> createState() => _SpinButtonState();
 }
 
-class _SpinButtonState extends State<_SpinButton>
-    with SingleTickerProviderStateMixin {
+class _SpinButtonState extends State<_SpinButton> with SingleTickerProviderStateMixin {
   late AnimationController _pressCtrl;
   late Animation<double> _scale;
 
@@ -237,7 +258,8 @@ class _SpinButtonState extends State<_SpinButton>
     super.initState();
     _pressCtrl = AnimationController(vsync: this, duration: 150.ms);
     _scale = Tween<double>(begin: 1.0, end: 0.92).animate(
-        CurvedAnimation(parent: _pressCtrl, curve: Curves.easeOut));
+      CurvedAnimation(parent: _pressCtrl, curve: Curves.easeOut),
+    );
   }
 
   @override
@@ -262,8 +284,8 @@ class _SpinButtonState extends State<_SpinButton>
             },
             onTapCancel: () => _pressCtrl.reverse(),
             child: Container(
-              width: 200,
-              height: 200,
+              width: 180,
+              height: 180,
               decoration: BoxDecoration(
                 shape: BoxShape.circle,
                 gradient: const LinearGradient(
@@ -274,25 +296,32 @@ class _SpinButtonState extends State<_SpinButton>
                 boxShadow: [
                   BoxShadow(
                     color: AppColors.accent.withOpacity(glowOpacity),
-                    blurRadius: 40,
-                    spreadRadius: 8,
+                    blurRadius: 36,
+                    spreadRadius: 6,
                   ),
                 ],
               ),
               child: widget.isLoading
                   ? const Center(
-                      child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2.5))
+                      child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2.5),
+                    )
                   : Column(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
-                        const Text('🎲', style: TextStyle(fontSize: 40)),
+                        const Icon(
+                          Icons.casino_rounded,
+                          color: Colors.white,
+                          size: 44,
+                        ),
                         const SizedBox(height: 8),
-                        Text('SPIN',
-                            style: AppTextStyles.button().copyWith(
-                              fontSize: 20,
-                              letterSpacing: 3,
-                              color: Colors.white,
-                            )),
+                        Text(
+                          'SPIN',
+                          style: AppTextStyles.button().copyWith(
+                            fontSize: 18,
+                            letterSpacing: 3,
+                            color: Colors.white,
+                          ),
+                        ),
                       ],
                     ),
             ),
@@ -315,65 +344,57 @@ class _RouletteOverlay extends StatefulWidget {
 
 class _RouletteOverlayState extends State<_RouletteOverlay>
     with SingleTickerProviderStateMixin {
-  late AnimationController _ctrl;
-  late ScrollController _scrollCtrl;
-
-  static const _categories = [
-    '📜 History', '🌌 Space', '🧪 Biology',
-    '🏛 Architecture', '⚙️ Physics', '🎨 Art',
-    '💻 Technology', '🐾 Animals', '🌍 Geography',
-    '🎬 Movies', '???', '🏆 Sports',
-    '🎵 Music', '🍜 Food', '???',
+  static const List<(String, IconData)> _categories = [
+    ('History', Icons.history_edu_rounded),
+    ('Space & Astronomy', Icons.rocket_launch_rounded),
+    ('Science & Physics', Icons.biotech_rounded),
+    ('Architecture', Icons.apartment_rounded),
+    ('Technology', Icons.memory_rounded),
+    ('Arts & Culture', Icons.palette_rounded),
+    ('Wildlife & Animals', Icons.pets_rounded),
+    ('World Geography', Icons.public_rounded),
+    ('Cinema & Film', Icons.movie_rounded),
+    ('Global Sports', Icons.sports_volleyball_rounded),
   ];
 
   int _displayedIndex = 0;
   bool _revealed = false;
-  String _discoveredText = '';
 
   @override
   void initState() {
     super.initState();
-    _ctrl = AnimationController(vsync: this, duration: 2200.ms);
-    _scrollCtrl = ScrollController();
     _startAnimation();
   }
 
-  @override
-  void dispose() {
-    _ctrl.dispose();
-    _scrollCtrl.dispose();
-    super.dispose();
-  }
-
   void _startAnimation() async {
-    // Cycle through categories fast, then slow
-    for (int i = 0; i < 20; i++) {
-      await Future.delayed(Duration(milliseconds: 60 + (i * 15)));
+    for (int i = 0; i < 18; i++) {
+      await Future.delayed(Duration(milliseconds: 60 + (i * 12)));
       if (!mounted) return;
       setState(() {
         _displayedIndex = (_displayedIndex + 1) % _categories.length;
       });
       HapticFeedback.selectionClick();
     }
-    // Slow down
-    for (int i = 0; i < 5; i++) {
-      await Future.delayed(Duration(milliseconds: 200 + (i * 80)));
+    for (int i = 0; i < 4; i++) {
+      await Future.delayed(Duration(milliseconds: 180 + (i * 70)));
       if (!mounted) return;
       setState(() {
         _displayedIndex = (_displayedIndex + 1) % _categories.length;
       });
     }
 
-    await Future.delayed(500.ms);
+    await Future.delayed(400.ms);
     if (!mounted) return;
     setState(() => _revealed = true);
     HapticFeedback.heavyImpact();
-    await Future.delayed(1200.ms);
+    await Future.delayed(900.ms);
     if (mounted) Navigator.of(context).pop();
   }
 
   @override
   Widget build(BuildContext context) {
+    final current = _categories[_displayedIndex];
+
     return Center(
       child: AnimatedSwitcher(
         duration: 300.ms,
@@ -381,29 +402,46 @@ class _RouletteOverlayState extends State<_RouletteOverlay>
             ? Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  Text('✨', style: const TextStyle(fontSize: 48))
-                      .animate().scale(duration: 400.ms, curve: Curves.elasticOut),
+                  Container(
+                    padding: const EdgeInsets.all(16),
+                    decoration: BoxDecoration(
+                      color: AppColors.accent.withOpacity(0.2),
+                      shape: BoxShape.circle,
+                      border: Border.all(color: AppColors.accent, width: 2),
+                    ),
+                    child: const Icon(
+                      Icons.check_circle_rounded,
+                      color: AppColors.accent,
+                      size: 48,
+                    ),
+                  ).animate().scale(duration: 350.ms, curve: Curves.elasticOut),
                   const SizedBox(height: 16),
-                  Text('DISCOVERED',
-                      style: AppTextStyles.overline(color: AppColors.accent)
-                          .copyWith(fontSize: 14, letterSpacing: 4)),
+                  Text(
+                    'DISCOVERED',
+                    style: AppTextStyles.overline(color: AppColors.accent).copyWith(
+                      fontSize: 14,
+                      letterSpacing: 4,
+                    ),
+                  ),
                 ],
               )
             : Column(
                 mainAxisSize: MainAxisSize.min,
                 key: ValueKey(_displayedIndex),
                 children: [
-                  Text('SPINNING...',
-                      style: AppTextStyles.overline(color: AppColors.textMuted)
-                          .copyWith(letterSpacing: 3)),
-                  const SizedBox(height: 24),
-                  AnimatedSwitcher(
-                    duration: 100.ms,
-                    child: Text(
-                      _categories[_displayedIndex],
-                      key: ValueKey(_displayedIndex),
-                      style: AppTextStyles.cardTitle()
-                          .copyWith(fontSize: 22, color: AppColors.textPrimary),
+                  Text(
+                    'FINDING ARTICLE...',
+                    style: AppTextStyles.overline(color: AppColors.textMuted)
+                        .copyWith(letterSpacing: 3),
+                  ),
+                  const SizedBox(height: 20),
+                  Icon(current.$2, color: AppColors.accent, size: 36),
+                  const SizedBox(height: 12),
+                  Text(
+                    current.$1,
+                    style: AppTextStyles.cardTitle().copyWith(
+                      fontSize: 20,
+                      color: AppColors.textPrimary,
                     ),
                   ),
                 ],
@@ -417,29 +455,34 @@ class _RouletteOverlayState extends State<_RouletteOverlay>
 // Quick Action Card
 // ──────────────────────────────────────────────────────
 class _QuickActionCard extends StatelessWidget {
-  final String icon;
+  final IconData icon;
   final String label;
   final Color color;
   final VoidCallback onTap;
 
   const _QuickActionCard({
-    required this.icon, required this.label,
-    required this.color, required this.onTap,
+    required this.icon,
+    required this.label,
+    required this.color,
+    required this.onTap,
   });
 
   @override
   Widget build(BuildContext context) {
     return GlassCard(
       onTap: onTap,
-      padding: const EdgeInsets.all(18),
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 16),
       child: Row(
         children: [
-          Text(icon, style: const TextStyle(fontSize: 24)),
-          const SizedBox(width: 12),
+          Icon(icon, color: color, size: 24),
+          const SizedBox(width: 10),
           Expanded(
-            child: Text(label,
-                style: AppTextStyles.label(color: AppColors.textPrimary)
-                    .copyWith(height: 1.4)),
+            child: Text(
+              label,
+              style: AppTextStyles.label(color: AppColors.textPrimary).copyWith(height: 1.3),
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
+            ),
           ),
         ],
       ),
@@ -457,7 +500,7 @@ class _DailyChallengeCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final article = data['article'] as Map<String, dynamic>?;
-    final title = article?['title'] as String? ?? 'Today\'s Challenge';
+    final title = article?['title'] as String? ?? 'Daily Discovery';
     final difficulty = article?['difficulty'] as String? ?? 'medium';
 
     return GlassCard(
@@ -465,32 +508,40 @@ class _DailyChallengeCard extends StatelessWidget {
       child: Row(
         children: [
           Container(
-            width: 48, height: 48,
+            width: 44,
+            height: 44,
             decoration: BoxDecoration(
               color: AppColors.warning.withOpacity(0.15),
               borderRadius: BorderRadius.circular(12),
             ),
-            child: const Center(child: Text('📅', style: TextStyle(fontSize: 22))),
+            child: const Center(
+              child: Icon(Icons.today_rounded, color: AppColors.warning, size: 22),
+            ),
           ),
-          const SizedBox(width: 16),
+          const SizedBox(width: 14),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text('TODAY\'S WIKI',
+                Text('DAILY CHALLENGE',
                     style: AppTextStyles.overline(color: AppColors.warning)),
-                const SizedBox(height: 4),
-                Text(title, style: AppTextStyles.bodyMedium(), maxLines: 1,
-                    overflow: TextOverflow.ellipsis),
-                Text('Difficulty: ${difficulty[0].toUpperCase()}${difficulty.substring(1)}',
-                    style: AppTextStyles.metadata()),
+                const SizedBox(height: 2),
+                Text(
+                  title,
+                  style: AppTextStyles.bodyMedium(),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+                Text(
+                  'Difficulty: ${difficulty[0].toUpperCase()}${difficulty.substring(1)}',
+                  style: AppTextStyles.metadata(),
+                ),
               ],
             ),
           ),
-          Icon(Icons.arrow_forward_ios_rounded,
-              size: 14, color: AppColors.textMuted),
+          const Icon(Icons.chevron_right_rounded, size: 20, color: AppColors.textMuted),
         ],
       ),
-    ).animate().fadeIn(delay: 600.ms, duration: 400.ms);
+    ).animate().fadeIn(delay: 400.ms, duration: 400.ms);
   }
 }

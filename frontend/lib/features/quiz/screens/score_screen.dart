@@ -13,11 +13,11 @@ class ScoreScreen extends ConsumerWidget {
   const ScoreScreen({super.key, required this.article, required this.result});
 
   String _accuracyLabel(double accuracy) {
-    if (accuracy >= 1.0) return '💯 PERFECT!';
-    if (accuracy >= 0.8) return '🔥 EXCELLENT';
-    if (accuracy >= 0.6) return '⭐ GOOD';
-    if (accuracy >= 0.4) return '📚 DECENT';
-    return '💪 KEEP TRYING';
+    if (accuracy >= 1.0) return 'PERFECT SCORE';
+    if (accuracy >= 0.8) return 'EXCELLENT';
+    if (accuracy >= 0.6) return 'GOOD JOB';
+    if (accuracy >= 0.4) return 'SOLID EFFORT';
+    return 'KEEP PRACTICING';
   }
 
   Color _accuracyColor(double accuracy) {
@@ -40,149 +40,176 @@ class ScoreScreen extends ConsumerWidget {
         backgroundColor: Colors.transparent,
         body: SafeArea(
           child: SingleChildScrollView(
-            padding: const EdgeInsets.all(24),
+            physics: const BouncingScrollPhysics(),
+            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 24),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.center,
               children: [
-                const SizedBox(height: 40),
+                const SizedBox(height: 20),
 
-                // ── Performance label ──
-                Text(label,
-                    style: AppTextStyles.sectionTitle(color: accentColor))
-                    .animate().scale(duration: 600.ms, curve: Curves.elasticOut),
+                // Accuracy Badge
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
+                  decoration: BoxDecoration(
+                    color: accentColor.withOpacity(0.15),
+                    borderRadius: BorderRadius.circular(20),
+                    border: Border.all(color: accentColor.withOpacity(0.4)),
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(
+                        accuracy >= 1.0 ? Icons.workspace_premium_rounded : Icons.insights_rounded,
+                        color: accentColor,
+                        size: 18,
+                      ),
+                      const SizedBox(width: 6),
+                      Text(
+                        label,
+                        style: AppTextStyles.label(color: accentColor),
+                      ),
+                    ],
+                  ),
+                ).animate().scale(duration: 500.ms, curve: Curves.elasticOut),
 
                 const SizedBox(height: 8),
-                Text('${breakdown.correctAnswers} / ${breakdown.totalQuestions} correct',
-                    style: AppTextStyles.body()),
+                Text(
+                  '${breakdown.correctAnswers} of ${breakdown.totalQuestions} questions correct',
+                  style: AppTextStyles.body(),
+                ),
 
-                const SizedBox(height: 48),
+                const SizedBox(height: 32),
 
-                // ── Big Score Number ──
-                Text(breakdown.finalScore.toString(),
-                    style: AppTextStyles.score())
+                // ── Big Score Display ──
+                Text(
+                  breakdown.finalScore.toString(),
+                  style: AppTextStyles.score(),
+                )
                     .animate()
-                    .fadeIn(duration: 800.ms)
-                    .scale(duration: 800.ms, curve: Curves.easeOutBack),
+                    .fadeIn(duration: 600.ms)
+                    .scale(duration: 600.ms, curve: Curves.easeOutBack),
 
-                Text('TOTAL SCORE',
-                    style: AppTextStyles.overline(color: AppColors.textMuted)),
+                Text(
+                  'TOTAL POINTS',
+                  style: AppTextStyles.overline(color: AppColors.textMuted),
+                ),
 
-                const SizedBox(height: 40),
+                const SizedBox(height: 28),
 
-                // ── Score breakdown ──
+                // ── Score Breakdown Card ──
                 GlassCard(
                   child: Column(
                     children: [
-                      _BreakdownRow('Base score', breakdown.baseScore),
-                      _BreakdownRow('Speed bonus', breakdown.speedBonus,
-                          color: AppColors.secondaryAccent),
+                      _BreakdownRow('Base Points', breakdown.baseScore),
+                      _BreakdownRow(
+                        'Speed Bonus',
+                        breakdown.speedBonus,
+                        color: AppColors.secondaryAccent,
+                      ),
                       if (breakdown.perfectBonus > 0)
-                        _BreakdownRow('🌟 Perfect bonus', breakdown.perfectBonus,
-                            color: AppColors.warning),
+                        _BreakdownRow(
+                          'Perfect Accuracy Bonus',
+                          breakdown.perfectBonus,
+                          color: AppColors.warning,
+                        ),
                       if (breakdown.dailyMultiplier > 1.0)
                         _BreakdownRow(
-                          '📅 Daily multiplier ×${breakdown.dailyMultiplier.toStringAsFixed(1)}',
-                          (breakdown.finalScore - breakdown.finalScore ~/ breakdown.dailyMultiplier),
+                          'Daily Multiplier (1.5x)',
+                          (breakdown.finalScore -
+                              breakdown.finalScore ~/ breakdown.dailyMultiplier),
                           color: AppColors.streak,
                         ),
-                      const Divider(color: AppColors.glassBorder, height: 24),
+                      const Divider(color: AppColors.glassBorder, height: 20),
                       Row(
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
-                          Text('TOTAL', style: AppTextStyles.label()),
-                          Text('+${breakdown.xpEarned} XP',
-                              style: AppTextStyles.cardTitle(color: AppColors.accent)),
+                          Text('EXPERIENCE GAINED', style: AppTextStyles.label()),
+                          Text(
+                            '+${breakdown.xpEarned} XP',
+                            style: AppTextStyles.cardTitle(color: AppColors.accent),
+                          ),
                         ],
                       ),
                     ],
                   ),
-                ).animate().fadeIn(delay: 600.ms),
+                ).animate().fadeIn(delay: 300.ms),
 
-                const SizedBox(height: 24),
+                const SizedBox(height: 16),
 
-                // ── Level up banner ──
+                // ── Level Up Banner ──
                 if (breakdown.leveledUp)
                   GlassCard(
                     borderColor: AppColors.warning.withOpacity(0.6),
-                    backgroundColor: AppColors.warning.withOpacity(0.05),
+                    backgroundColor: AppColors.warning.withOpacity(0.08),
                     child: Row(
                       children: [
-                        const Text('⬆️', style: TextStyle(fontSize: 28)),
-                        const SizedBox(width: 16),
+                        const Icon(
+                          Icons.arrow_circle_up_rounded,
+                          color: AppColors.warning,
+                          size: 32,
+                        ),
+                        const SizedBox(width: 14),
                         Expanded(
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              Text('LEVEL UP!',
+                              Text('LEVEL UP',
                                   style: AppTextStyles.overline(color: AppColors.warning)),
-                              Text('Level ${breakdown.levelBefore} → ${breakdown.levelAfter}',
-                                  style: AppTextStyles.bodyMedium()),
+                              Text(
+                                'Level ${breakdown.levelBefore} → Level ${breakdown.levelAfter}',
+                                style: AppTextStyles.bodyMedium(),
+                              ),
                             ],
                           ),
                         ),
                       ],
                     ),
-                  ).animate()
-                      .fadeIn(delay: 900.ms)
-                      .shake(delay: 1000.ms, hz: 4, offset: const Offset(4, 0)),
+                  )
+                      .animate()
+                      .fadeIn(delay: 500.ms)
+                      .shake(delay: 600.ms, hz: 4, offset: const Offset(4, 0)),
 
-                // ── New achievements ──
-                if (breakdown.newAchievements.isNotEmpty) ...[
-                  const SizedBox(height: 16),
-                  GlassCard(
-                    borderColor: AppColors.secondaryAccent.withOpacity(0.4),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text('NEW ACHIEVEMENTS', style: AppTextStyles.overline()),
-                        const SizedBox(height: 12),
-                        ...breakdown.newAchievements.map((name) => Padding(
-                          padding: const EdgeInsets.only(bottom: 8),
-                          child: Row(
-                            children: [
-                              const Text('🏆', style: TextStyle(fontSize: 16)),
-                              const SizedBox(width: 10),
-                              Text(name, style: AppTextStyles.bodyMedium()),
-                            ],
-                          ),
-                        )),
-                      ],
-                    ),
-                  ).animate().fadeIn(delay: 1100.ms),
+                // ── Streak Status ──
+                if (result.newStreak > 0) ...[
+                  const SizedBox(height: 14),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      const Icon(Icons.local_fire_department_rounded,
+                          color: AppColors.streak, size: 20),
+                      const SizedBox(width: 6),
+                      Text(
+                        '${result.newStreak} Day Streak Active',
+                        style: AppTextStyles.bodyMedium(color: AppColors.streak),
+                      ),
+                    ],
+                  ).animate().fadeIn(delay: 700.ms),
                 ],
-
-                const SizedBox(height: 40),
-
-                // ── Streak ──
-                if (result.newStreak > 0)
-                  Text('🔥 ${result.newStreak} day streak',
-                      style: AppTextStyles.bodyMedium(color: AppColors.streak))
-                      .animate().fadeIn(delay: 1200.ms),
 
                 const SizedBox(height: 32),
 
-                // ── Action buttons ──
+                // ── Action Buttons ──
                 SizedBox(
                   width: double.infinity,
-                  height: 56,
+                  height: 54,
                   child: ElevatedButton(
                     onPressed: () => context.go('/home'),
                     child: const Text('SPIN AGAIN'),
                   ),
-                ).animate().fadeIn(delay: 1300.ms).slideY(begin: 0.15, delay: 1300.ms),
+                ).animate().fadeIn(delay: 800.ms).slideY(begin: 0.15),
 
-                const SizedBox(height: 12),
+                const SizedBox(height: 10),
 
                 SizedBox(
                   width: double.infinity,
-                  height: 48,
+                  height: 46,
                   child: TextButton(
                     onPressed: () => context.go('/leaderboard'),
-                    child: const Text('See Leaderboard →'),
+                    child: const Text('VIEW RANKINGS →'),
                   ),
-                ).animate().fadeIn(delay: 1400.ms),
+                ).animate().fadeIn(delay: 900.ms),
 
-                const SizedBox(height: 40),
+                const SizedBox(height: 20),
               ],
             ),
           ),
@@ -197,13 +224,12 @@ class _BreakdownRow extends StatelessWidget {
   final int value;
   final Color color;
 
-  const _BreakdownRow(this.label, this.value,
-      {this.color = AppColors.textPrimary});
+  const _BreakdownRow(this.label, this.value, {this.color = AppColors.textPrimary});
 
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 6),
+      padding: const EdgeInsets.symmetric(vertical: 5),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [

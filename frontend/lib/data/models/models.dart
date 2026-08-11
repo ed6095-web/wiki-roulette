@@ -1,5 +1,5 @@
-// Data models for the app
-// Using plain Dart classes (no code generation required for MVP)
+// Data models for Wiki Roulette
+// Plain Dart classes with clean serialization
 
 class ArticleModel {
   final int id;
@@ -33,11 +33,11 @@ class ArticleModel {
   });
 
   factory ArticleModel.fromJson(Map<String, dynamic> json) => ArticleModel(
-        id: json['id'] as int,
-        wikiPageId: json['wiki_page_id'] as int,
-        title: json['title'] as String,
-        slug: json['slug'] as String,
-        url: json['url'] as String,
+        id: json['id'] as int? ?? 0,
+        wikiPageId: json['wiki_page_id'] as int? ?? 0,
+        title: json['title'] as String? ?? 'Untitled Article',
+        slug: json['slug'] as String? ?? '',
+        url: json['url'] as String? ?? '',
         description: json['description'] as String?,
         extract: json['extract'] as String?,
         thumbnailUrl: json['thumbnail_url'] as String?,
@@ -50,22 +50,13 @@ class ArticleModel {
             .toList(),
       );
 
-  String get difficultyLabel => difficulty[0].toUpperCase() + difficulty.substring(1);
-
-  String get difficultyEmoji {
-    switch (difficulty) {
-      case 'easy': return '🟢';
-      case 'medium': return '🟡';
-      case 'hard': return '🔴';
-      default: return '🟡';
-    }
-  }
+  String get difficultyLabel =>
+      difficulty.isNotEmpty ? difficulty[0].toUpperCase() + difficulty.substring(1) : 'Medium';
 
   String? get shortExtract {
     if (extract == null) return null;
     final sentences = extract!.split(RegExp(r'(?<=[.!?])\s+'));
     if (sentences.isEmpty) return extract;
-    // Return first 3 sentences
     return sentences.take(3).join(' ');
   }
 }
@@ -73,14 +64,14 @@ class ArticleModel {
 class CategoryModel {
   final int id;
   final String name;
-  final String? icon;
+  final String? iconName;
 
-  const CategoryModel({required this.id, required this.name, this.icon});
+  const CategoryModel({required this.id, required this.name, this.iconName});
 
   factory CategoryModel.fromJson(Map<String, dynamic> json) => CategoryModel(
-        id: json['id'] as int,
-        name: json['name'] as String,
-        icon: json['icon'] as String?,
+        id: json['id'] as int? ?? 0,
+        name: json['name'] as String? ?? '',
+        iconName: json['icon'] as String?,
       );
 }
 
@@ -104,17 +95,20 @@ class QuizQuestionModel {
   });
 
   factory QuizQuestionModel.fromJson(Map<String, dynamic> json) => QuizQuestionModel(
-        id: json['id'] as int,
-        question: json['question'] as String,
-        optionA: json['option_a'] as String,
-        optionB: json['option_b'] as String,
-        optionC: json['option_c'] as String,
-        optionD: json['option_d'] as String,
+        id: json['id'] as int? ?? 0,
+        question: json['question'] as String? ?? '',
+        optionA: json['option_a'] as String? ?? '',
+        optionB: json['option_b'] as String? ?? '',
+        optionC: json['option_c'] as String? ?? '',
+        optionD: json['option_d'] as String? ?? '',
         difficulty: json['difficulty'] as String? ?? 'medium',
       );
 
   Map<String, String> get optionsMap => {
-        'a': optionA, 'b': optionB, 'c': optionC, 'd': optionD,
+        'a': optionA,
+        'b': optionB,
+        'c': optionC,
+        'd': optionD,
       };
 }
 
@@ -134,13 +128,15 @@ class GameSessionModel {
   });
 
   factory GameSessionModel.fromJson(Map<String, dynamic> json) => GameSessionModel(
-        sessionId: json['session_id'] as int,
-        articleId: json['article_id'] as int,
-        gameType: json['game_type'] as String,
-        questions: (json['questions'] as List<dynamic>)
+        sessionId: json['session_id'] as int? ?? 0,
+        articleId: json['article_id'] as int? ?? 0,
+        gameType: json['game_type'] as String? ?? 'roulette',
+        questions: (json['questions'] as List<dynamic>? ?? [])
             .map((q) => QuizQuestionModel.fromJson(q as Map<String, dynamic>))
             .toList(),
-        startedAt: DateTime.parse(json['started_at'] as String),
+        startedAt: json['started_at'] != null
+            ? DateTime.tryParse(json['started_at'] as String) ?? DateTime.now()
+            : DateTime.now(),
       );
 }
 
@@ -160,11 +156,11 @@ class AnswerResultModel {
   });
 
   factory AnswerResultModel.fromJson(Map<String, dynamic> json) => AnswerResultModel(
-        correct: json['correct'] as bool,
-        correctOption: json['correct_option'] as String,
+        correct: json['correct'] as bool? ?? false,
+        correctOption: json['correct_option'] as String? ?? 'a',
         explanation: json['explanation'] as String?,
-        scoreDelta: json['score_delta'] as int,
-        xpDelta: json['xp_delta'] as int,
+        scoreDelta: json['score_delta'] as int? ?? 0,
+        xpDelta: json['xp_delta'] as int? ?? 0,
       );
 }
 
@@ -194,28 +190,28 @@ class ScoreBreakdownModel {
     required this.levelBefore,
     required this.levelAfter,
     required this.leveledUp,
-    required this.newAchievements,
+    this.newAchievements = const [],
   });
 
   factory ScoreBreakdownModel.fromJson(Map<String, dynamic> json) => ScoreBreakdownModel(
-        correctAnswers: json['correct_answers'] as int,
-        totalQuestions: json['total_questions'] as int,
-        baseScore: json['base_score'] as int,
-        speedBonus: json['speed_bonus'] as int,
-        perfectBonus: json['perfect_bonus'] as int,
-        dailyMultiplier: (json['daily_multiplier'] as num).toDouble(),
-        finalScore: json['final_score'] as int,
-        xpEarned: json['xp_earned'] as int,
-        levelBefore: json['level_before'] as int,
-        levelAfter: json['level_after'] as int,
-        leveledUp: json['leveled_up'] as bool,
+        correctAnswers: json['correct_answers'] as int? ?? 0,
+        totalQuestions: json['total_questions'] as int? ?? 0,
+        baseScore: json['base_score'] as int? ?? 0,
+        speedBonus: json['speed_bonus'] as int? ?? 0,
+        perfectBonus: json['perfect_bonus'] as int? ?? 0,
+        dailyMultiplier: (json['daily_multiplier'] as num?)?.toDouble() ?? 1.0,
+        finalScore: json['final_score'] as int? ?? 0,
+        xpEarned: json['xp_earned'] as int? ?? 0,
+        levelBefore: json['level_before'] as int? ?? 1,
+        levelAfter: json['level_after'] as int? ?? 1,
+        leveledUp: json['leveled_up'] as bool? ?? false,
         newAchievements: (json['new_achievements'] as List<dynamic>?)
-                ?.map((e) => e as String)
+                ?.map((e) => e.toString())
                 .toList() ??
-            [],
+            const [],
       );
 
-  bool get isPerfect => correctAnswers == totalQuestions;
+  bool get isPerfect => totalQuestions > 0 && correctAnswers == totalQuestions;
   double get accuracy => totalQuestions > 0 ? correctAnswers / totalQuestions : 0.0;
 }
 
@@ -231,49 +227,101 @@ class GameCompleteModel {
   });
 
   factory GameCompleteModel.fromJson(Map<String, dynamic> json) => GameCompleteModel(
-        sessionId: json['session_id'] as int,
-        scoreBreakdown: ScoreBreakdownModel.fromJson(
-            json['score_breakdown'] as Map<String, dynamic>),
-        newStreak: json['new_streak'] as int,
+        sessionId: json['session_id'] as int? ?? 0,
+        scoreBreakdown: json['score_breakdown'] != null
+            ? ScoreBreakdownModel.fromJson(json['score_breakdown'] as Map<String, dynamic>)
+            : const ScoreBreakdownModel(
+                correctAnswers: 0,
+                totalQuestions: 0,
+                baseScore: 0,
+                speedBonus: 0,
+                perfectBonus: 0,
+                dailyMultiplier: 1.0,
+                finalScore: 0,
+                xpEarned: 0,
+                levelBefore: 1,
+                levelAfter: 1,
+                leveledUp: false,
+              ),
+        newStreak: json['new_streak'] as int? ?? 0,
       );
 }
 
-class UserModel {
-  final int id;
-  final String username;
-  final String email;
-  final String? avatarUrl;
+class UserProfileModel {
+  final String name;
+  final List<String> interests;
   final int xp;
   final int level;
   final int totalGames;
   final int totalScore;
   final int currentStreak;
   final int longestStreak;
+  final int perfectQuizzes;
+  final int articlesRead;
 
-  const UserModel({
-    required this.id,
-    required this.username,
-    required this.email,
-    this.avatarUrl,
-    required this.xp,
-    required this.level,
-    required this.totalGames,
-    required this.totalScore,
-    required this.currentStreak,
-    required this.longestStreak,
+  const UserProfileModel({
+    required this.name,
+    this.interests = const [],
+    this.xp = 0,
+    this.level = 1,
+    this.totalGames = 0,
+    this.totalScore = 0,
+    this.currentStreak = 0,
+    this.longestStreak = 0,
+    this.perfectQuizzes = 0,
+    this.articlesRead = 0,
   });
 
-  factory UserModel.fromJson(Map<String, dynamic> json) => UserModel(
-        id: json['id'] as int,
-        username: json['username'] as String,
-        email: json['email'] as String,
-        avatarUrl: json['avatar_url'] as String?,
+  UserProfileModel copyWith({
+    String? name,
+    List<String>? interests,
+    int? xp,
+    int? level,
+    int? totalGames,
+    int? totalScore,
+    int? currentStreak,
+    int? longestStreak,
+    int? perfectQuizzes,
+    int? articlesRead,
+  }) =>
+      UserProfileModel(
+        name: name ?? this.name,
+        interests: interests ?? this.interests,
+        xp: xp ?? this.xp,
+        level: level ?? this.level,
+        totalGames: totalGames ?? this.totalGames,
+        totalScore: totalScore ?? this.totalScore,
+        currentStreak: currentStreak ?? this.currentStreak,
+        longestStreak: longestStreak ?? this.longestStreak,
+        perfectQuizzes: perfectQuizzes ?? this.perfectQuizzes,
+        articlesRead: articlesRead ?? this.articlesRead,
+      );
+
+  Map<String, dynamic> toJson() => {
+        'name': name,
+        'interests': interests,
+        'xp': xp,
+        'level': level,
+        'totalGames': totalGames,
+        'totalScore': totalScore,
+        'currentStreak': currentStreak,
+        'longestStreak': longestStreak,
+        'perfectQuizzes': perfectQuizzes,
+        'articlesRead': articlesRead,
+      };
+
+  factory UserProfileModel.fromJson(Map<String, dynamic> json) => UserProfileModel(
+        name: json['name'] as String? ?? 'Explorer',
+        interests: (json['interests'] as List<dynamic>?)?.map((e) => e.toString()).toList() ??
+            const [],
         xp: json['xp'] as int? ?? 0,
         level: json['level'] as int? ?? 1,
-        totalGames: json['total_games'] as int? ?? 0,
-        totalScore: json['total_score'] as int? ?? 0,
-        currentStreak: json['current_streak'] as int? ?? 0,
-        longestStreak: json['longest_streak'] as int? ?? 0,
+        totalGames: json['totalGames'] as int? ?? 0,
+        totalScore: json['totalScore'] as int? ?? 0,
+        currentStreak: json['currentStreak'] as int? ?? 0,
+        longestStreak: json['longestStreak'] as int? ?? 0,
+        perfectQuizzes: json['perfectQuizzes'] as int? ?? 0,
+        articlesRead: json['articlesRead'] as int? ?? 0,
       );
 }
 
@@ -295,11 +343,11 @@ class LeaderboardEntryModel {
   });
 
   factory LeaderboardEntryModel.fromJson(Map<String, dynamic> json) => LeaderboardEntryModel(
-        rank: json['rank'] as int,
-        userId: json['user_id'] as int,
-        username: json['username'] as String,
+        rank: json['rank'] as int? ?? 1,
+        userId: json['user_id'] as int? ?? 0,
+        username: json['username'] as String? ?? 'Explorer',
         avatarUrl: json['avatar_url'] as String?,
-        score: json['score'] as int,
+        score: json['score'] as int? ?? 0,
         isCurrentUser: json['is_current_user'] as bool? ?? false,
       );
 }
@@ -308,7 +356,7 @@ class AchievementModel {
   final int id;
   final String name;
   final String description;
-  final String icon;
+  final String iconCode;
   final int xpReward;
   final bool unlocked;
   final DateTime? unlockedAt;
@@ -317,21 +365,21 @@ class AchievementModel {
     required this.id,
     required this.name,
     required this.description,
-    required this.icon,
+    required this.iconCode,
     required this.xpReward,
     required this.unlocked,
     this.unlockedAt,
   });
 
   factory AchievementModel.fromJson(Map<String, dynamic> json) => AchievementModel(
-        id: json['id'] as int,
-        name: json['name'] as String,
-        description: json['description'] as String,
-        icon: json['icon'] as String,
-        xpReward: json['xp_reward'] as int,
+        id: json['id'] as int? ?? 0,
+        name: json['name'] as String? ?? '',
+        description: json['description'] as String? ?? '',
+        iconCode: json['icon'] as String? ?? 'trophy',
+        xpReward: json['xp_reward'] as int? ?? 50,
         unlocked: json['unlocked'] as bool? ?? false,
         unlockedAt: json['unlocked_at'] != null
-            ? DateTime.parse(json['unlocked_at'] as String)
+            ? DateTime.tryParse(json['unlocked_at'] as String)
             : null,
       );
 }

@@ -6,12 +6,67 @@ import '../../../core/constants/app_text_styles.dart';
 import '../../../core/widgets/core_widgets.dart';
 import '../../auth/providers/auth_provider.dart';
 
-class SettingsScreen extends ConsumerWidget {
+class SettingsScreen extends ConsumerStatefulWidget {
   const SettingsScreen({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final user = ref.watch(authProvider).user;
+  ConsumerState<SettingsScreen> createState() => _SettingsScreenState();
+}
+
+class _SettingsScreenState extends ConsumerState<SettingsScreen> {
+  late TextEditingController _nameCtrl;
+
+  @override
+  void initState() {
+    super.initState();
+    final profile = ref.read(profileProvider).profile;
+    _nameCtrl = TextEditingController(text: profile.name);
+  }
+
+  @override
+  void dispose() {
+    _nameCtrl.dispose();
+    super.dispose();
+  }
+
+  void _editNameDialog(BuildContext context) {
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: AppColors.surfaceElevated,
+        title: const Text(
+          'Change Explorer Name',
+          style: TextStyle(fontFamily: 'Poppins', color: AppColors.textPrimary),
+        ),
+        content: TextField(
+          controller: _nameCtrl,
+          autofocus: true,
+          style: AppTextStyles.bodyMedium(),
+          decoration: const InputDecoration(labelText: 'Your Name / Handle'),
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('CANCEL')),
+          ElevatedButton(
+            onPressed: () {
+              if (_nameCtrl.text.trim().isNotEmpty) {
+                final current = ref.read(profileProvider).profile;
+                ref.read(profileProvider.notifier).setProfile(
+                      name: _nameCtrl.text.trim(),
+                      interests: current.interests,
+                    );
+              }
+              Navigator.pop(ctx);
+            },
+            child: const Text('SAVE'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final user = ref.watch(profileProvider).profile;
 
     return AtmosphericBackground(
       child: Scaffold(
@@ -25,115 +80,138 @@ class SettingsScreen extends ConsumerWidget {
           ),
         ),
         body: ListView(
-          padding: const EdgeInsets.all(24),
+          physics: const BouncingScrollPhysics(),
+          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
           children: [
-            // Account section
-            Text('ACCOUNT', style: AppTextStyles.overline(color: AppColors.accent)),
-            const SizedBox(height: 12),
+            // Profile Section
+            Text('PROFILE', style: AppTextStyles.overline(color: AppColors.accent)),
+            const SizedBox(height: 10),
             GlassCard(
               child: Column(
                 children: [
-                  _SettingsRow(
-                    icon: Icons.person_outline,
-                    title: 'Username',
-                    subtitle: user?.username ?? 'Explorer',
+                  GestureDetector(
+                    onTap: () => _editNameDialog(context),
+                    child: _SettingsRow(
+                      icon: Icons.person_outline_rounded,
+                      title: 'Explorer Name',
+                      subtitle: user.name,
+                      trailing: const Icon(Icons.edit_outlined,
+                          color: AppColors.secondaryAccent, size: 18),
+                    ),
                   ),
                   const Divider(color: AppColors.glassBorder),
                   _SettingsRow(
-                    icon: Icons.email_outlined,
-                    title: 'Email',
-                    subtitle: user?.email ?? '',
+                    icon: Icons.interests_outlined,
+                    title: 'Favorite Topics',
+                    subtitle: user.interests.join(', '),
                   ),
                 ],
               ),
             ),
 
-            const SizedBox(height: 28),
+            const SizedBox(height: 24),
 
-            // Gameplay settings
-            Text('GAMEPLAY', style: AppTextStyles.overline(color: AppColors.accent)),
-            const SizedBox(height: 12),
+            // Gameplay Settings
+            Text('GAMEPLAY & FEEDBACK', style: AppTextStyles.overline(color: AppColors.accent)),
+            const SizedBox(height: 10),
             GlassCard(
               child: Column(
                 children: [
                   _SettingsSwitchRow(
-                    icon: Icons.vibration,
+                    icon: Icons.vibration_rounded,
                     title: 'Haptic Feedback',
-                    subtitle: 'Vibrations during roulette and answers',
+                    subtitle: 'Vibrations during roulette spins & answers',
                     value: true,
                     onChanged: (val) {},
                   ),
                   const Divider(color: AppColors.glassBorder),
                   _SettingsSwitchRow(
                     icon: Icons.volume_up_outlined,
-                    title: 'Sound Effects',
-                    subtitle: 'Play audio cues for correct/wrong answers',
+                    title: 'Sound Cues',
+                    subtitle: 'Audio effects for answers & unlocks',
                     value: true,
                     onChanged: (val) {},
                   ),
-                  const Divider(color: AppColors.glassBorder),
-                  _SettingsRow(
-                    icon: Icons.language_outlined,
-                    title: 'Language',
-                    subtitle: 'English (en)',
-                    trailing: const Icon(Icons.chevron_right, color: AppColors.textMuted),
-                  ),
                 ],
               ),
             ),
 
-            const SizedBox(height: 28),
+            const SizedBox(height: 24),
 
             // About & Credits
             Text('ABOUT', style: AppTextStyles.overline(color: AppColors.accent)),
-            const SizedBox(height: 12),
+            const SizedBox(height: 10),
             GlassCard(
               child: Column(
                 children: [
-                  _SettingsRow(
-                    icon: Icons.info_outline,
-                    title: 'Version',
-                    subtitle: '1.0.0 (Build 1)',
+                  const _SettingsRow(
+                    icon: Icons.info_outline_rounded,
+                    title: 'Wiki Roulette Version',
+                    subtitle: '1.2.0 — Production Cloud Edition',
                   ),
                   const Divider(color: AppColors.glassBorder),
-                  _SettingsRow(
-                    icon: Icons.menu_book_outlined,
-                    title: 'Content Source',
+                  const _SettingsRow(
+                    icon: Icons.menu_book_rounded,
+                    title: 'Knowledge Provider',
                     subtitle: 'Wikipedia & Wikimedia Foundation (CC BY-SA 4.0)',
+                  ),
+                  const Divider(color: AppColors.glassBorder),
+                  const _SettingsRow(
+                    icon: Icons.cloud_done_outlined,
+                    title: 'Backend Server',
+                    subtitle: 'Live on Render Cloud & Supabase PostgreSQL',
                   ),
                 ],
               ),
             ),
 
-            const SizedBox(height: 36),
+            const SizedBox(height: 30),
 
-            // Logout Button
+            // Reset profile CTA
             SizedBox(
               width: double.infinity,
-              height: 52,
+              height: 50,
               child: OutlinedButton(
-                onPressed: () async {
-                  await ref.read(authProvider.notifier).logout();
-                  if (context.mounted) {
-                    context.go('/login');
-                  }
+                onPressed: () {
+                  showDialog(
+                    context: context,
+                    builder: (ctx) => AlertDialog(
+                      backgroundColor: AppColors.surfaceElevated,
+                      title: const Text(
+                        'Edit Topics & Name?',
+                        style: TextStyle(fontFamily: 'Poppins', color: AppColors.textPrimary),
+                      ),
+                      content: const Text(
+                        'You will be taken to the onboarding setup screen.',
+                        style: TextStyle(
+                            fontFamily: 'Poppins', color: AppColors.textSecondary),
+                      ),
+                      actions: [
+                        TextButton(
+                          onPressed: () => Navigator.pop(ctx),
+                          child: const Text('CANCEL'),
+                        ),
+                        ElevatedButton(
+                          onPressed: () {
+                            Navigator.pop(ctx);
+                            context.go('/onboarding');
+                          },
+                          child: const Text('RECONFIGURE'),
+                        ),
+                      ],
+                    ),
+                  );
                 },
                 style: OutlinedButton.styleFrom(
-                  side: const BorderSide(color: AppColors.error, width: 1.5),
+                  side: const BorderSide(color: AppColors.accent, width: 1.2),
                   shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
-                  foregroundColor: AppColors.error,
+                  foregroundColor: AppColors.accent,
                 ),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    const Icon(Icons.logout_rounded, color: AppColors.error, size: 20),
-                    const SizedBox(width: 8),
-                    Text('LOG OUT', style: AppTextStyles.button(color: AppColors.error)),
-                  ],
-                ),
+                child: const Text('RECONFIGURE PROFILE & TOPICS'),
               ),
             ),
-            const SizedBox(height: 30),
+
+            const SizedBox(height: 24),
           ],
         ),
       ),
@@ -160,14 +238,19 @@ class _SettingsRow extends StatelessWidget {
       padding: const EdgeInsets.symmetric(vertical: 8),
       child: Row(
         children: [
-          Icon(icon, color: AppColors.textSecondary, size: 22),
+          Icon(icon, color: AppColors.textSecondary, size: 20),
           const SizedBox(width: 14),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(title, style: AppTextStyles.bodyMedium()),
-                Text(subtitle, style: AppTextStyles.metadata()),
+                Text(
+                  subtitle,
+                  style: AppTextStyles.metadata(),
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                ),
               ],
             ),
           ),
@@ -196,10 +279,10 @@ class _SettingsSwitchRow extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 8),
+      padding: const EdgeInsets.symmetric(vertical: 6),
       child: Row(
         children: [
-          Icon(icon, color: AppColors.textSecondary, size: 22),
+          Icon(icon, color: AppColors.textSecondary, size: 20),
           const SizedBox(width: 14),
           Expanded(
             child: Column(
