@@ -105,10 +105,8 @@ class AppTextStyles {
 }
 
 class AppConstants {
-  // API
-  static const String apiBaseUrl = 'http://10.0.2.2:8000'; // Android emulator
-  // For iOS simulator use: http://localhost:8000
-  // For physical device use your machine's local IP: http://192.168.x.x:8000
+  // API — Live production backend hosted on Render
+  static const String apiBaseUrl = 'https://wiki-roulette-backend.onrender.com';
 
   // Timing
   static const Duration rouletteAnimDuration = Duration(milliseconds: 2200);
