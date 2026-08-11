@@ -34,183 +34,179 @@ class ScoreScreen extends ConsumerWidget {
     final label = _accuracyLabel(accuracy);
     final accentColor = _accuracyColor(accuracy);
 
-    return AtmosphericBackground(
-      glowColor: accentColor.withOpacity(0.2),
-      child: Scaffold(
-        backgroundColor: Colors.transparent,
-        body: SafeArea(
-          child: SingleChildScrollView(
-            physics: const BouncingScrollPhysics(),
-            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 24),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.center,
-              children: [
-                const SizedBox(height: 20),
+    return PopScope(
+      canPop: false,
+      onPopInvoked: (didPop) {
+        if (!didPop) {
+          context.go('/home');
+        }
+      },
+      child: AtmosphericBackground(
+        glowColor: accentColor.withOpacity(0.2),
+        child: Scaffold(
+          backgroundColor: Colors.transparent,
+          body: SafeArea(
+            child: SingleChildScrollView(
+              physics: const BouncingScrollPhysics(),
+              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 24),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.center,
+                children: [
+                  const SizedBox(height: 10),
 
-                // Accuracy Badge
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
-                  decoration: BoxDecoration(
-                    color: accentColor.withOpacity(0.15),
-                    borderRadius: BorderRadius.circular(20),
-                    border: Border.all(color: accentColor.withOpacity(0.4)),
-                  ),
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Icon(
-                        accuracy >= 1.0 ? Icons.workspace_premium_rounded : Icons.insights_rounded,
-                        color: accentColor,
-                        size: 18,
-                      ),
-                      const SizedBox(width: 6),
-                      Text(
-                        label,
-                        style: AppTextStyles.label(color: accentColor),
-                      ),
-                    ],
-                  ),
-                ).animate().scale(duration: 500.ms, curve: Curves.elasticOut),
-
-                const SizedBox(height: 8),
-                Text(
-                  '${breakdown.correctAnswers} of ${breakdown.totalQuestions} questions correct',
-                  style: AppTextStyles.body(),
-                ),
-
-                const SizedBox(height: 32),
-
-                // ── Big Score Display ──
-                Text(
-                  breakdown.finalScore.toString(),
-                  style: AppTextStyles.score(),
-                )
-                    .animate()
-                    .fadeIn(duration: 600.ms)
-                    .scale(duration: 600.ms, curve: Curves.easeOutBack),
-
-                Text(
-                  'TOTAL POINTS',
-                  style: AppTextStyles.overline(color: AppColors.textMuted),
-                ),
-
-                const SizedBox(height: 28),
-
-                // ── Score Breakdown Card ──
-                GlassCard(
-                  child: Column(
-                    children: [
-                      _BreakdownRow('Base Points', breakdown.baseScore),
-                      _BreakdownRow(
-                        'Speed Bonus',
-                        breakdown.speedBonus,
-                        color: AppColors.secondaryAccent,
-                      ),
-                      if (breakdown.perfectBonus > 0)
-                        _BreakdownRow(
-                          'Perfect Accuracy Bonus',
-                          breakdown.perfectBonus,
-                          color: AppColors.warning,
+                  // Accuracy Badge
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
+                    decoration: BoxDecoration(
+                      color: accentColor.withOpacity(0.15),
+                      borderRadius: BorderRadius.circular(20),
+                      border: Border.all(color: accentColor.withOpacity(0.4)),
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(
+                          accuracy >= 1.0
+                              ? Icons.workspace_premium_rounded
+                              : Icons.insights_rounded,
+                          color: accentColor,
+                          size: 18,
                         ),
-                      if (breakdown.dailyMultiplier > 1.0)
-                        _BreakdownRow(
-                          'Daily Multiplier (1.5x)',
-                          (breakdown.finalScore -
-                              breakdown.finalScore ~/ breakdown.dailyMultiplier),
-                          color: AppColors.streak,
+                        const SizedBox(width: 6),
+                        Text(
+                          label,
+                          style: AppTextStyles.label(color: accentColor),
                         ),
-                      const Divider(color: AppColors.glassBorder, height: 20),
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: [
-                          Text('EXPERIENCE GAINED', style: AppTextStyles.label()),
-                          Text(
-                            '+${breakdown.xpEarned} XP',
-                            style: AppTextStyles.cardTitle(color: AppColors.accent),
-                          ),
-                        ],
-                      ),
-                    ],
+                      ],
+                    ),
+                  ).animate().scale(duration: 500.ms, curve: Curves.elasticOut),
+
+                  const SizedBox(height: 8),
+                  Text(
+                    '${breakdown.correctAnswers} of ${breakdown.totalQuestions} questions correct',
+                    style: AppTextStyles.body(),
                   ),
-                ).animate().fadeIn(delay: 300.ms),
 
-                const SizedBox(height: 16),
+                  const SizedBox(height: 28),
 
-                // ── Level Up Banner ──
-                if (breakdown.leveledUp)
+                  // ── Big Score Display ──
+                  Text(
+                    breakdown.finalScore.toString(),
+                    style: AppTextStyles.score(),
+                  )
+                      .animate()
+                      .fadeIn(duration: 500.ms)
+                      .scale(duration: 500.ms, curve: Curves.easeOutBack),
+
+                  Text(
+                    'TOTAL POINTS',
+                    style: AppTextStyles.overline(color: AppColors.textMuted),
+                  ),
+
+                  const SizedBox(height: 24),
+
+                  // ── Score Breakdown Card ──
                   GlassCard(
-                    borderColor: AppColors.warning.withOpacity(0.6),
-                    backgroundColor: AppColors.warning.withOpacity(0.08),
+                    child: Column(
+                      children: [
+                        _BreakdownRow('Base Points', breakdown.baseScore),
+                        _BreakdownRow(
+                          'Speed Bonus',
+                          breakdown.speedBonus,
+                          color: AppColors.secondaryAccent,
+                        ),
+                        if (breakdown.perfectBonus > 0)
+                          _BreakdownRow(
+                            'Perfect Accuracy Bonus',
+                            breakdown.perfectBonus,
+                            color: AppColors.warning,
+                          ),
+                        const Divider(color: AppColors.glassBorder, height: 20),
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            Text('EXPERIENCE GAINED', style: AppTextStyles.label()),
+                            Text(
+                              '+${breakdown.xpEarned} XP',
+                              style: AppTextStyles.cardTitle(color: AppColors.accent),
+                            ),
+                          ],
+                        ),
+                      ],
+                    ),
+                  ).animate().fadeIn(delay: 200.ms),
+
+                  const SizedBox(height: 16),
+
+                  // ── Topic Knowledge Card ──
+                  GlassCard(
+                    borderColor: AppColors.secondaryAccent.withOpacity(0.3),
                     child: Row(
                       children: [
-                        const Icon(
-                          Icons.arrow_circle_up_rounded,
-                          color: AppColors.warning,
-                          size: 32,
+                        Container(
+                          padding: const EdgeInsets.all(10),
+                          decoration: BoxDecoration(
+                            color: AppColors.secondaryAccent.withOpacity(0.15),
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          child: const Icon(
+                            Icons.auto_stories_rounded,
+                            color: AppColors.secondaryAccent,
+                            size: 24,
+                          ),
                         ),
                         const SizedBox(width: 14),
                         Expanded(
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              Text('LEVEL UP',
-                                  style: AppTextStyles.overline(color: AppColors.warning)),
                               Text(
-                                'Level ${breakdown.levelBefore} → Level ${breakdown.levelAfter}',
+                                'CHALLENGE TOPIC',
+                                style: AppTextStyles.overline(color: AppColors.secondaryAccent),
+                              ),
+                              Text(
+                                article.title,
                                 style: AppTextStyles.bodyMedium(),
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                              Text(
+                                'Difficulty: ${article.difficultyLabel}',
+                                style: AppTextStyles.metadata(),
                               ),
                             ],
                           ),
                         ),
                       ],
                     ),
-                  )
-                      .animate()
-                      .fadeIn(delay: 500.ms)
-                      .shake(delay: 600.ms, hz: 4, offset: const Offset(4, 0)),
+                  ).animate().fadeIn(delay: 350.ms),
 
-                // ── Streak Status ──
-                if (result.newStreak > 0) ...[
-                  const SizedBox(height: 14),
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      const Icon(Icons.local_fire_department_rounded,
-                          color: AppColors.streak, size: 20),
-                      const SizedBox(width: 6),
-                      Text(
-                        '${result.newStreak} Day Streak Active',
-                        style: AppTextStyles.bodyMedium(color: AppColors.streak),
-                      ),
-                    ],
-                  ).animate().fadeIn(delay: 700.ms),
+                  const SizedBox(height: 28),
+
+                  // ── Action Buttons ──
+                  SizedBox(
+                    width: double.infinity,
+                    height: 54,
+                    child: ElevatedButton(
+                      onPressed: () => context.go('/home'),
+                      child: const Text('SPIN AGAIN'),
+                    ),
+                  ).animate().fadeIn(delay: 450.ms).slideY(begin: 0.15),
+
+                  const SizedBox(height: 10),
+
+                  SizedBox(
+                    width: double.infinity,
+                    height: 46,
+                    child: TextButton(
+                      onPressed: () => context.go('/leaderboard'),
+                      child: const Text('VIEW RANKINGS →'),
+                    ),
+                  ).animate().fadeIn(delay: 550.ms),
+
+                  const SizedBox(height: 20),
                 ],
-
-                const SizedBox(height: 32),
-
-                // ── Action Buttons ──
-                SizedBox(
-                  width: double.infinity,
-                  height: 54,
-                  child: ElevatedButton(
-                    onPressed: () => context.go('/home'),
-                    child: const Text('SPIN AGAIN'),
-                  ),
-                ).animate().fadeIn(delay: 800.ms).slideY(begin: 0.15),
-
-                const SizedBox(height: 10),
-
-                SizedBox(
-                  width: double.infinity,
-                  height: 46,
-                  child: TextButton(
-                    onPressed: () => context.go('/leaderboard'),
-                    child: const Text('VIEW RANKINGS →'),
-                  ),
-                ).animate().fadeIn(delay: 900.ms),
-
-                const SizedBox(height: 20),
-              ],
+              ),
             ),
           ),
         ),

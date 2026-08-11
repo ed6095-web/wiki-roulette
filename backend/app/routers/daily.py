@@ -6,8 +6,8 @@ from typing import Optional
 from app.core.database import get_db
 from app.core.deps import get_optional_user
 from app.models.user import User
-from app.models.article import DailyChallenge, Article
-from app.models.game import GameSession
+from app.models.article import Article
+from app.models.game import DailyChallenge, GameSession
 from app.schemas.article import DailyChallengeResponse, ArticleSchema
 
 router = APIRouter(prefix="/daily", tags=["daily"])
