@@ -12,7 +12,7 @@ limiter = Limiter(key_func=get_remote_address)
 app = FastAPI(
     title="Wiki Roulette API",
     description="Backend for Wiki Roulette — a gamified Wikipedia exploration app",
-    version="1.0.0",
+    version="1.2.0",
     docs_url="/docs" if settings.ENVIRONMENT == "development" else None,
     redoc_url=None,
 )

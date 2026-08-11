@@ -376,7 +376,7 @@ class UserProfileModel {
 
   const UserProfileModel({
     required this.name,
-    required this.interests,
+    this.interests = const [],
     this.xp = 0,
     this.level = 1,
     this.currentStreak = 0,
