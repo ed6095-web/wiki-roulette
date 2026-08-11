@@ -7,6 +7,7 @@ import '../../../core/constants/app_colors.dart';
 import '../../../core/constants/app_text_styles.dart';
 import '../../../core/widgets/core_widgets.dart';
 import '../../../core/network/api_client.dart';
+import '../../../data/models/models.dart';
 
 class SearchScreen extends ConsumerStatefulWidget {
   const SearchScreen({super.key});
@@ -22,7 +23,7 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
   Timer? _debounce;
 
   static const List<(String, IconData)> _trendingSuggestions = [
-    ('James Webb Telescope', Icons.rocket_launch_rounded),
+    ('James Webb Space Telescope', Icons.rocket_launch_rounded),
     ('Quantum Computing', Icons.memory_rounded),
     ('Ancient Rome', Icons.history_edu_rounded),
     ('Great Barrier Reef', Icons.public_rounded),
@@ -51,11 +52,14 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
   void _onSearch(String query) {
     _debounce?.cancel();
     if (query.trim().length < 2) {
-      setState(() => _results = []);
+      setState(() {
+        _results = [];
+        _loading = false;
+      });
       return;
     }
-    _debounce = Timer(const Duration(milliseconds: 350), () async {
-      setState(() => _loading = true);
+    setState(() => _loading = true);
+    _debounce = Timer(const Duration(milliseconds: 300), () async {
       try {
         final data = await ApiClient.instance.searchArticles(query.trim());
         if (!mounted) return;
@@ -69,15 +73,38 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
               url: m['url'] as String? ?? '',
             );
           }).toList();
+          _loading = false;
         });
-      } catch (_) {}
-      if (mounted) setState(() => _loading = false);
+      } catch (_) {
+        if (mounted) setState(() => _loading = false);
+      }
     });
   }
 
   void _applySuggestion(String topic) {
     _ctrl.text = topic;
     _onSearch(topic);
+  }
+
+  Future<void> _openArticle(ArticleSearchResult item) async {
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (_) => const Center(
+        child: CircularProgressIndicator(color: AppColors.accent),
+      ),
+    );
+
+    try {
+      final data = await ApiClient.instance.getArticleByTitle(item.title);
+      if (mounted) Navigator.of(context).pop();
+      final article = ArticleModel.fromJson(data);
+      if (mounted) {
+        context.push('/article/reveal', extra: article);
+      }
+    } catch (_) {
+      if (mounted) Navigator.of(context).pop();
+    }
   }
 
   @override
@@ -184,7 +211,11 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
                         itemCount: _results.length,
                         itemBuilder: (_, i) {
                           final r = _results[i];
-                          return _SearchResultTile(result: r, index: i);
+                          return _SearchResultTile(
+                            result: r,
+                            index: i,
+                            onTap: () => _openArticle(r),
+                          );
                         },
                       ),
               ),
@@ -213,14 +244,20 @@ class ArticleSearchResult {
 class _SearchResultTile extends StatelessWidget {
   final ArticleSearchResult result;
   final int index;
-  const _SearchResultTile({required this.result, required this.index});
+  final VoidCallback onTap;
+
+  const _SearchResultTile({
+    required this.result,
+    required this.index,
+    required this.onTap,
+  });
 
   @override
   Widget build(BuildContext context) {
     return Padding(
       padding: const EdgeInsets.only(bottom: 8),
       child: GlassCard(
-        onTap: () => context.pop(),
+        onTap: onTap,
         padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
         child: Row(
           children: [

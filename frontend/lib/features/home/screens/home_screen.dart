@@ -5,6 +5,7 @@ import 'package:go_router/go_router.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import '../providers/home_provider.dart';
 import '../../auth/providers/auth_provider.dart';
+import '../../../data/models/models.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../core/constants/app_text_styles.dart';
 import '../../../core/widgets/core_widgets.dart';
@@ -61,7 +62,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with TickerProviderStat
       );
     }
 
-    setState(() => _isAnimating = false);
+    if (mounted) setState(() => _isAnimating = false);
 
     final state = ref.read(rouletteProvider);
     if (state.article != null && mounted) {
@@ -213,8 +214,32 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with TickerProviderStat
 
                     // ── Daily Challenge Card ──
                     daily.when(
-                      data: (data) =>
-                          data != null ? _DailyChallengeCard(data: data) : const SizedBox(),
+                      data: (data) => data != null
+                          ? _DailyChallengeCard(
+                              data: data,
+                              onTap: () {
+                                final articleMap = data['article'] as Map<String, dynamic>?;
+                                final article = ArticleModel.fromJson(articleMap ??
+                                    {
+                                      'id': 10,
+                                      'wiki_page_id': 10,
+                                      'title': 'James Webb Space Telescope',
+                                      'slug': 'James_Webb_Space_Telescope',
+                                      'url':
+                                          'https://en.wikipedia.org/wiki/James_Webb_Space_Telescope',
+                                      'description': 'Space telescope for infrared astronomy',
+                                      'extract':
+                                          'The James Webb Space Telescope is a space telescope designed primarily to conduct infrared astronomy.',
+                                      'difficulty': 'medium',
+                                      'quiz_available': true,
+                                      'categories': [
+                                        {'id': 1, 'name': 'Space', 'icon': 'space'}
+                                      ],
+                                    });
+                                context.push('/article/reveal', extra: article);
+                              },
+                            )
+                          : const SizedBox(),
                       loading: () => const SkeletonLoader(height: 80),
                       error: (_, __) => const SizedBox(),
                     ),
@@ -495,7 +520,9 @@ class _QuickActionCard extends StatelessWidget {
 // ──────────────────────────────────────────────────────
 class _DailyChallengeCard extends StatelessWidget {
   final Map<String, dynamic> data;
-  const _DailyChallengeCard({required this.data});
+  final VoidCallback onTap;
+
+  const _DailyChallengeCard({required this.data, required this.onTap});
 
   @override
   Widget build(BuildContext context) {
@@ -504,6 +531,7 @@ class _DailyChallengeCard extends StatelessWidget {
     final difficulty = article?['difficulty'] as String? ?? 'medium';
 
     return GlassCard(
+      onTap: onTap,
       borderColor: AppColors.warning.withOpacity(0.3),
       child: Row(
         children: [
